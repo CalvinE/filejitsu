@@ -4,6 +4,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TODO: implement a logger, slog?
+
 var rootCmd = &cobra.Command{
 	Use:   "filejitsu",
 	Short: "A CLI tool for File System tools",
