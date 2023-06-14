@@ -5,10 +5,15 @@ import (
 
 	"github.com/calvine/filejitsu/bulkrename"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slog"
 )
 
+type bkrnProcessingFunction func(*slog.Logger, bulkrename.ResultEntry) error
+
+const bulkRenameCommandName = "bulk-rename"
+
 var bulkRenameCommand = &cobra.Command{
-	Use:     "bulk-rename",
+	Use:     bulkRenameCommandName,
 	Aliases: []string{"bkrn"},
 	Short:   "rename files in bulk",
 	Long:    "rename files in bulk based on regex named capture groups",
@@ -27,24 +32,59 @@ func bulkRenameInit() {
 }
 
 func bulkRenameRun(cmd *cobra.Command, args []string) error {
+	commandLogger := logger.With(slog.String("commandName", bulkRenameCommandName))
+	commandLogger.Debug("starting command",
+		slog.String("name", bulkRenameCommandName),
+		slog.Any("args", bkrnArgs),
+	)
+	defer commandLogger.Debug("ending command",
+		slog.String("name", bulkRenameCommandName),
+	)
 	params, err := bulkrename.ValidateArgs(cmd.Context(), bkrnArgs)
 	if err != nil {
+		commandLogger.Error("failed to validate command arguments",
+			slog.String("error", err.Error()),
+		)
 		return fmt.Errorf("failed to validate bulk rename arguments: %v", err)
 	}
-	result, err := bulkrename.Run(cmd.Context(), params)
+	commandLogger.Debug("args validated successfully",
+		slog.Any("params", params),
+	)
+	result, err := bulkrename.Run(cmd.Context(), commandLogger, params)
 	if err != nil {
+		commandLogger.Error("failed to perform bulk rename",
+			slog.String("error", err.Error()),
+		)
 		return fmt.Errorf("failed to perform bulk rename: %v", err)
 	}
 	if len(result) == 0 {
+		commandLogger.Warn("no files found with name matching input regex",
+			slog.String("regex", bkrnArgs.TargetRegexString),
+		)
 		fmt.Println("no files in root dir matched target regex")
+		return nil
 	}
+	var processingFunction bkrnProcessingFunction
 	if params.IsTest {
+		commandLogger.Warn("command run in test mode")
 		fmt.Println("test flag found, printing potential renames")
-		fmt.Println("--------------------------")
-		for _, r := range result {
-			fmt.Printf("%s => %s\n\n", r.Original.Name, r.New.Name)
-		}
-		fmt.Println("--------------------------")
+		processingFunction = testProcessResults
+	} else {
+		commandLogger.Debug("bulk rename being run in normal mode")
+		processingFunction = bulkrename.ProcessResult
 	}
+	for i, r := range result {
+		commandLogger.Debug("result set item",
+			slog.Int("index", i),
+			slog.String("oldName", r.Original.Name),
+			slog.String("newName", r.New.Name),
+		)
+		processingFunction(commandLogger, r)
+	}
+	return nil
+}
+
+func testProcessResults(logger *slog.Logger, r bulkrename.ResultEntry) error {
+	fmt.Printf("%s => %s\n\n", r.Original.Name, r.New.Name)
 	return nil
 }

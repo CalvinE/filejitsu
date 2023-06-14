@@ -24,6 +24,7 @@ type Params struct {
 }
 
 type ResultEntry struct {
-	Original util.File `json:"original"`
-	New      util.File `json:"new"`
+	Original  util.File `json:"original"`
+	New       util.File `json:"new"`
+	DidChange bool      `json:"didChange"`
 }
