@@ -8,6 +8,8 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+// TODO: add flag to save job to a file and also resume job from a file
+
 type bkrnProcessingFunction func(*slog.Logger, bulkrename.ResultEntry) error
 
 const bulkRenameCommandName = "bulk-rename"
@@ -50,14 +52,14 @@ func bulkRenameRun(cmd *cobra.Command, args []string) error {
 	commandLogger.Debug("args validated successfully",
 		slog.Any("params", params),
 	)
-	result, err := bulkrename.Run(cmd.Context(), commandLogger, params)
+	results, err := bulkrename.CalculateJobs(cmd.Context(), commandLogger, params)
 	if err != nil {
 		commandLogger.Error("failed to perform bulk rename",
 			slog.String("error", err.Error()),
 		)
 		return fmt.Errorf("failed to perform bulk rename: %v", err)
 	}
-	if len(result) == 0 {
+	if len(results) == 0 {
 		commandLogger.Warn("no files found with name matching input regex",
 			slog.String("regex", bkrnArgs.TargetRegexString),
 		)
@@ -68,23 +70,24 @@ func bulkRenameRun(cmd *cobra.Command, args []string) error {
 	if params.IsTest {
 		commandLogger.Warn("command run in test mode")
 		fmt.Println("test flag found, printing potential renames")
-		processingFunction = testProcessResults
+		processingFunction = bulkrename.ProcessTestResults
 	} else {
 		commandLogger.Debug("bulk rename being run in normal mode")
 		processingFunction = bulkrename.ProcessResult
 	}
-	for i, r := range result {
+	for i, result := range results {
 		commandLogger.Debug("result set item",
 			slog.Int("index", i),
-			slog.String("oldName", r.Original.Name),
-			slog.String("newName", r.New.Name),
+			slog.String("oldName", result.Original.Name),
+			slog.String("newName", result.New.Name),
 		)
-		processingFunction(commandLogger, r)
+		if err := processingFunction(commandLogger, result); err != nil {
+			logger.Error("failed to rename file",
+				slog.String("error", err.Error()),
+				slog.Any("failedOperation", result),
+			)
+			return err
+		}
 	}
-	return nil
-}
-
-func testProcessResults(logger *slog.Logger, r bulkrename.ResultEntry) error {
-	fmt.Printf("%s => %s\n\n", r.Original.Name, r.New.Name)
 	return nil
 }

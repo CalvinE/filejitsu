@@ -72,7 +72,7 @@ func ValidateArgs(ctx context.Context, args Args) (Params, error) {
 	return params, nil
 }
 
-func Run(ctx context.Context, logger *slog.Logger, params Params) ([]ResultEntry, error) {
+func CalculateJobs(ctx context.Context, logger *slog.Logger, params Params) ([]ResultEntry, error) {
 	recursionCount := util.GetContextRecursionCount(ctx)
 	logger = logger.With("recursionCount", recursionCount)
 	results := make([]ResultEntry, 0)
@@ -139,7 +139,7 @@ func Run(ctx context.Context, logger *slog.Logger, params Params) ([]ResultEntry
 				slog.Int("recursionCount", recursionCount),
 			)
 			ctx = util.SetContextRecursionCount(ctx, recursionCount+1)
-			recursiveResults, err := Run(ctx, logger, recursiveParams)
+			recursiveResults, err := CalculateJobs(ctx, logger, recursiveParams)
 			if err != nil {
 				logger.Error("failed in recursive run",
 					slog.Any("recursiveParams", recursiveParams),
@@ -149,7 +149,6 @@ func Run(ctx context.Context, logger *slog.Logger, params Params) ([]ResultEntry
 			}
 			results = append(results, recursiveResults...)
 		}
-
 	}
 
 	return results, nil
@@ -208,6 +207,26 @@ func calculateRename(logger *slog.Logger, original util.File, captureRegex *rege
 
 }
 
-func ProcessResult(logger *slog.Logger, r ResultEntry) error {
-	return errors.New("NOT IMPLEMENTED!!!")
+func ProcessResult(logger *slog.Logger, result ResultEntry) error {
+	origPath := path.Join(result.Original.Path, result.Original.Name)
+	newPath := path.Join(result.New.Path, result.New.Name)
+	if err := os.Rename(origPath, newPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			logger.Warn("file does not exist... could the file have already been renamed?",
+				slog.String("file", origPath),
+			)
+		}
+		logger.Error("rename operation encountered error",
+			slog.String("originalFile", origPath),
+			slog.String("newFile", newPath),
+			slog.String("error", err.Error()),
+		)
+		return err
+	}
+	return nil
+}
+
+func ProcessTestResults(logger *slog.Logger, r ResultEntry) error {
+	fmt.Printf("%s => %s\n\n", r.Original.Name, r.New.Name)
+	return nil
 }
