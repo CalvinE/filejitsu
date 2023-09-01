@@ -68,7 +68,7 @@ func bulkRenameRun(cmd *cobra.Command, args []string) error {
 	}
 	var processingFunction bkrnProcessingFunction
 	if params.IsTest {
-		commandLogger.Warn("command run in test mode")
+		commandLogger.Info("command run in test mode")
 		fmt.Println("test flag found, printing potential renames")
 		processingFunction = bulkrename.ProcessTestResults
 	} else {

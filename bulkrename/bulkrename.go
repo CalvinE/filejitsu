@@ -49,9 +49,8 @@ func ValidateArgs(ctx context.Context, args Args) (Params, error) {
 		"padRight": util.PadRight,
 	}).Parse(args.DestinationTemplateString)
 	if err != nil {
-		return params, errors.New("failed to parse destination template")
+		return params, fmt.Errorf("failed to parse destination template: %w", err) // errors.New("failed to parse destination template")
 	}
-	fmt.Println(destinationTemplate)
 	params.DestinationTemplate = destinationTemplate
 	// we need to make sure for each named destination capture group we have a comparable named capture group in the target regex
 	// for i := 0; i < len(destinationCaptureGroupNames); i++ {
@@ -159,19 +158,21 @@ func calculateRename(logger *slog.Logger, original util.File, captureRegex *rege
 	subMatches := captureRegex.FindStringSubmatch(original.Name)
 	numSubMatches := len(subMatches)
 	if numSubMatches == 0 {
-		logger.Error("no matches found for file name",
+		err := errors.New("no matches found for file name")
+		logger.Error(err.Error(),
 			slog.String("fileName", original.Name),
 			slog.String("regex", captureRegex.String()),
 		)
-		return ResultEntry{}, errors.New("no matches found for file name")
+		return ResultEntry{}, err
 	}
 	numRegexSubExpressions := captureRegex.NumSubexp()
 	if numSubMatches != numRegexSubExpressions+1 {
-		logger.Error("number of regex sub expressions not match sub matches + 1",
+		err := errors.New("number of regex sub expressions not match sub matches + 1")
+		logger.Error(err.Error(),
 			slog.Int("numRegexSubExpressions", numRegexSubExpressions),
 			slog.Int("numSubMatches", numSubMatches),
 		)
-		return ResultEntry{}, errors.New("number of regex sub expressions not match sub matches + 1")
+		return ResultEntry{}, err
 	}
 	for i, s := range captureRegex.SubexpNames() {
 		logger.Debug("setting value map item",
@@ -184,6 +185,7 @@ func calculateRename(logger *slog.Logger, original util.File, captureRegex *rege
 	if err := template.Execute(&buffer, valueMap); err != nil {
 		logger.Error("failed to execute template with captured data",
 			slog.Any("data", valueMap),
+			slog.String("errorMessage", err.Error()),
 		)
 		return ResultEntry{}, err
 	}
@@ -219,7 +221,7 @@ func ProcessResult(logger *slog.Logger, result ResultEntry) error {
 		logger.Error("rename operation encountered error",
 			slog.String("originalFile", origPath),
 			slog.String("newFile", newPath),
-			slog.String("error", err.Error()),
+			slog.String("errorMessage", err.Error()),
 		)
 		return err
 	}
