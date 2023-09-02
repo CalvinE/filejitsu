@@ -7,14 +7,6 @@ import (
 	"github.com/calvine/filejitsu/util"
 )
 
-type Args struct {
-	RootPath                  string `json:"rootPath"`
-	TargetRegexString         string `json:"targetRegexString"`
-	DestinationTemplateString string `json:"destinationTemplateString"`
-	Recursive                 bool   `json:"recursive"`
-	IsTest                    bool   `json:"isTest"`
-}
-
 type Params struct {
 	RootPath            string             `json:"rootPath"`
 	TargetRegex         *regexp.Regexp     `json:"targetRegex"`

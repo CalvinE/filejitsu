@@ -48,6 +48,7 @@ func setUpLogger(logLevelString string) {
 func main() {
 	rootCmd.PersistentFlags().StringVarP(&logLevelString, "logLevel", "l", "error", "The log level for the command. Supports error, warn, info, debug")
 	bulkRenameInit()
+	encryptDecryptInit()
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("failed to execute: %v", err)
 		os.Exit(1)

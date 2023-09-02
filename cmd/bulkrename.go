@@ -1,14 +1,27 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"regexp"
+	"text/template"
 
 	"github.com/calvine/filejitsu/bulkrename"
+	"github.com/calvine/filejitsu/util"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slog"
 )
 
 // TODO: add flag to save job to a file and also resume job from a file
+
+type BulkRenameArgs struct {
+	RootPath                  string `json:"rootPath"`
+	TargetRegexString         string `json:"targetRegexString"`
+	DestinationTemplateString string `json:"destinationTemplateString"`
+	Recursive                 bool   `json:"recursive"`
+	IsTest                    bool   `json:"isTest"`
+}
 
 type bkrnProcessingFunction func(*slog.Logger, bulkrename.ResultEntry) error
 
@@ -22,7 +35,7 @@ var bulkRenameCommand = &cobra.Command{
 	RunE:    bulkRenameRun,
 }
 
-var bkrnArgs = bulkrename.Args{}
+var bkrnArgs = BulkRenameArgs{}
 
 func bulkRenameInit() {
 	rootCmd.AddCommand(bulkRenameCommand)
@@ -36,13 +49,12 @@ func bulkRenameInit() {
 func bulkRenameRun(cmd *cobra.Command, args []string) error {
 	commandLogger := logger.With(slog.String("commandName", bulkRenameCommandName))
 	commandLogger.Debug("starting command",
-		slog.String("name", bulkRenameCommandName),
 		slog.Any("args", bkrnArgs),
 	)
 	defer commandLogger.Debug("ending command",
 		slog.String("name", bulkRenameCommandName),
 	)
-	params, err := bulkrename.ValidateArgs(cmd.Context(), bkrnArgs)
+	params, err := validateBulkrenameArgs(cmd.Context(), bkrnArgs)
 	if err != nil {
 		commandLogger.Error("failed to validate command arguments",
 			slog.String("error", err.Error()),
@@ -90,4 +102,60 @@ func bulkRenameRun(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+func validateBulkrenameArgs(ctx context.Context, args BulkRenameArgs) (bulkrename.Params, error) {
+	params := bulkrename.Params{}
+	// validate root path
+	if len(args.RootPath) == 0 {
+		return params, errors.New("root path not specified")
+	}
+	params.RootPath = args.RootPath
+	// validate target regex
+	if len(args.TargetRegexString) == 0 {
+		return params, errors.New("target regex not provided")
+	}
+	targetRegex, err := regexp.Compile(args.TargetRegexString)
+	if err != nil {
+		return params, fmt.Errorf("target regex failed to compile: %v", err)
+	}
+	targetCaptureGroupNames := targetRegex.SubexpNames()
+	if len(targetCaptureGroupNames) <= 1 {
+		return params, errors.New("no named capture groups found in target regex")
+	}
+	params.TargetRegex = targetRegex
+	// validate destination template
+	if len(args.DestinationTemplateString) == 0 {
+		return params, errors.New("destination template not provided")
+	}
+	// using .Option("missingkey=error") so that if a named capture group from the regex is missing in the template we should get an error?
+	// want to think on this more... Id like to find a way to know ahead of running the template
+	// it looks like the template struct contains a lot of data we can possibly use to find the variable names used in the template
+	// need to look more into it, but NodeAction (1) nodes in the tree can be navigated and within them there are Pipe.Cmd.Args that
+	// contain NodeField(8) that hold the value of the variable name in the template...
+	destinationTemplate, err := template.New("filePart").Option("missingkey=error").Funcs(template.FuncMap{
+		"padLeft":  util.PadLeft,
+		"padRight": util.PadRight,
+	}).Parse(args.DestinationTemplateString)
+	if err != nil {
+		return params, fmt.Errorf("failed to parse destination template: %w", err) // errors.New("failed to parse destination template")
+	}
+	params.DestinationTemplate = destinationTemplate
+	// we need to make sure for each named destination capture group we have a comparable named capture group in the target regex
+	// for i := 0; i < len(destinationCaptureGroupNames); i++ {
+	// 	destName := destinationCaptureGroupNames[i]
+	// 	found := false
+	// 	for j := 0; j < len(targetCaptureGroupNames); j++ {
+	// 		if destName == targetCaptureGroupNames[j] {
+	// 			found = true
+	// 			break
+	// 		}
+	// 	}
+	// 	if !found {
+	// 		return fmt.Errorf("target regex is missing named capture group found in destination regex: %s", destName)
+	// 	}
+	// }
+	params.Recursive = args.Recursive
+	params.IsTest = args.IsTest
+	return params, nil
 }

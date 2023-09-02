@@ -12,12 +12,6 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func ValidateArgs(logger *slog.Logger, args Args) (Params, error) {
-	params := Params{}
-
-	return params, nil
-}
-
 func Encrypt(logger *slog.Logger, params Params) error {
 	iv := make([]byte, aes.BlockSize)
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {

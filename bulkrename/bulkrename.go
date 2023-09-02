@@ -15,62 +15,6 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func ValidateArgs(ctx context.Context, args Args) (Params, error) {
-	params := Params{}
-	// validate root path
-	if len(args.RootPath) == 0 {
-		return params, errors.New("root path not specified")
-	}
-	params.RootPath = args.RootPath
-	// validate target regex
-	if len(args.TargetRegexString) == 0 {
-		return params, errors.New("target regex not provided")
-	}
-	targetRegex, err := regexp.Compile(args.TargetRegexString)
-	if err != nil {
-		return params, fmt.Errorf("target regex failed to compile: %v", err)
-	}
-	targetCaptureGroupNames := targetRegex.SubexpNames()
-	if len(targetCaptureGroupNames) <= 1 {
-		return params, errors.New("no named capture groups found in target regex")
-	}
-	params.TargetRegex = targetRegex
-	// validate destination template
-	if len(args.DestinationTemplateString) == 0 {
-		return params, errors.New("destination template not provided")
-	}
-	// using .Option("missingkey=error") so that if a named capture group from the regex is missing in the template we should get an error?
-	// want to think on this more... Id like to find a way to know ahead of running the template
-	// it looks like the template struct contains a lot of data we can possibly use to find the variable names used in the template
-	// need to look more into it, but NodeAction (1) nodes in the tree can be navigated and within them there are Pipe.Cmd.Args that
-	// contain NodeField(8) that hold the value of the variable name in the template...
-	destinationTemplate, err := template.New("filePart").Option("missingkey=error").Funcs(template.FuncMap{
-		"padLeft":  util.PadLeft,
-		"padRight": util.PadRight,
-	}).Parse(args.DestinationTemplateString)
-	if err != nil {
-		return params, fmt.Errorf("failed to parse destination template: %w", err) // errors.New("failed to parse destination template")
-	}
-	params.DestinationTemplate = destinationTemplate
-	// we need to make sure for each named destination capture group we have a comparable named capture group in the target regex
-	// for i := 0; i < len(destinationCaptureGroupNames); i++ {
-	// 	destName := destinationCaptureGroupNames[i]
-	// 	found := false
-	// 	for j := 0; j < len(targetCaptureGroupNames); j++ {
-	// 		if destName == targetCaptureGroupNames[j] {
-	// 			found = true
-	// 			break
-	// 		}
-	// 	}
-	// 	if !found {
-	// 		return fmt.Errorf("target regex is missing named capture group found in destination regex: %s", destName)
-	// 	}
-	// }
-	params.Recursive = args.Recursive
-	params.IsTest = args.IsTest
-	return params, nil
-}
-
 func CalculateJobs(ctx context.Context, logger *slog.Logger, params Params) ([]ResultEntry, error) {
 	recursionCount := util.GetContextRecursionCount(ctx)
 	logger = logger.With("recursionCount", recursionCount)
