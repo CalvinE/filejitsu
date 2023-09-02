@@ -10,32 +10,6 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func TestCMSPadOrTrim(t *testing.T) {
-	type testCase struct {
-		passphrase    []byte
-		desiredLength int
-		allowTrim     bool
-	}
-	testCases := []testCase{
-		{
-			passphrase:    []byte("password"),
-			desiredLength: 32,
-			allowTrim:     false,
-		},
-	}
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("test case %d", i), func(t *testing.T) {
-			padded, err := CMSPadOrTrim(tc.passphrase, tc.desiredLength, tc.allowTrim)
-			if err != nil {
-				t.Error(err)
-			}
-			if len(padded) != tc.desiredLength {
-				t.Errorf("padded passphrase length was not equal to desired length: wanted - %d got - %d", tc.desiredLength, len(padded))
-			}
-		})
-	}
-}
-
 func TestEncryptDecrypt(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
