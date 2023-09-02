@@ -147,5 +147,6 @@ func Decrypt(logger *slog.Logger, params Params) error {
 			}
 		}
 	}
+	logger.Debug("done decrypting input", slog.Int("bytesWritten", bytesWritten), slog.Int("bytesRead", bytesRead))
 	return nil
 }
