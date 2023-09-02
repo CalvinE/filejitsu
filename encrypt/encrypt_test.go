@@ -48,7 +48,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	testCases := []testCase{
 		{
 			data:       []byte("This is a test string"),
-			passphrase: []byte("testpass111111111111111111111111"),
+			passphrase: []byte("testpass"),
 		},
 	}
 	for i, tc := range testCases {
