@@ -72,34 +72,16 @@ func Encrypt(logger *slog.Logger, params Params) error {
 		return err
 	}
 	stream := cipher.NewOFB(block, iv)
-	streamWriter := cipher.StreamWriter{
+	cipherStream := cipher.StreamWriter{
 		S: stream,
 		W: params.Output,
 	}
-	inputBuffer := make([]byte, 64)
-	done := false
-	bytesRead, bytesWritten := 0, 0
-	for !done {
-		rn, err := params.Input.Read(inputBuffer)
-		bytesRead += rn
-		if err != nil {
-			if err == io.EOF {
-				// we are done here
-				break
-			}
-			logger.Error("failed to read data from input buffer", slog.String("errorMessage", err.Error()))
-			return err
-		}
-		if rn > 0 {
-			wn, err := streamWriter.Write(inputBuffer[:rn])
-			bytesWritten += wn
-			if err != nil {
-				logger.Error("failed to write to output stream", slog.String("errorMessage", err.Error()))
-				return err
-			}
-		}
+	err = processStreams(logger, params.Input, cipherStream)
+	if err != nil {
+		logger.Error("failed to encrypt data", slog.String("errorMessage", err.Error()))
+		return err
 	}
-	logger.Debug("done encrypting input", slog.Int("bytesWritten", bytesWritten), slog.Int("bytesRead", bytesRead))
+	logger.Debug("done encrypting input")
 	return nil
 }
 
@@ -124,22 +106,34 @@ func Decrypt(logger *slog.Logger, params Params) error {
 	}
 	stream := cipher.NewOFB(block, iv)
 	cipherStream := cipher.StreamReader{S: stream, R: params.Input}
+	err = processStreams(logger, cipherStream, params.Output)
+	if err != nil {
+		logger.Error("failed to decrypt data", slog.String("errorMessage", err.Error()))
+		return err
+	}
+	logger.Debug("done decrypting input")
+	return nil
+}
+
+// processStreams writes data from an io.Reader to and io.Writer
+func processStreams(logger *slog.Logger, input io.Reader, output io.Writer) error {
 	inputBuffer := make([]byte, 64)
-	done := false
 	bytesRead, bytesWritten := 0, 0
+	done := false
 	for !done {
-		rn, err := cipherStream.Read(inputBuffer)
+		rn, err := input.Read(inputBuffer)
 		bytesRead += rn
 		if err != nil {
 			if err == io.EOF {
 				// we are done here
-				break
+				done = true
+			} else {
+				logger.Error("failed to read data from input buffer", slog.String("errorMessage", err.Error()))
+				return err
 			}
-			logger.Error("failed to read data from input buffer", slog.String("errorMessage", err.Error()))
-			return err
 		}
 		if rn > 0 {
-			wn, err := params.Output.Write(inputBuffer[:rn])
+			wn, err := output.Write(inputBuffer[:rn])
 			bytesWritten += wn
 			if err != nil {
 				logger.Error("failed to write to output stream", slog.String("errorMessage", err.Error()))
@@ -147,6 +141,6 @@ func Decrypt(logger *slog.Logger, params Params) error {
 			}
 		}
 	}
-	logger.Debug("done decrypting input", slog.Int("bytesWritten", bytesWritten), slog.Int("bytesRead", bytesRead))
+	logger.Debug("done processing stream", slog.Int("bytesWritten", bytesWritten), slog.Int("bytesRead", bytesRead))
 	return nil
 }
