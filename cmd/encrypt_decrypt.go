@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -29,7 +29,7 @@ var encryptCommand = &cobra.Command{
 	Long:    "encrypt data provided using AES-256",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		encryptDecryptArgs.Operation = encrypt.OpEncrypt
-		return Run(cmd, args)
+		return encryptDecryptRun(cmd, args)
 	},
 }
 
@@ -40,7 +40,7 @@ var decryptCommand = &cobra.Command{
 	Long:    "decrypt data provided using AES-256",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		encryptDecryptArgs.Operation = encrypt.OpDecrypt
-		return Run(cmd, args)
+		return encryptDecryptRun(cmd, args)
 	},
 }
 
@@ -144,7 +144,7 @@ func attemptToCloseStreams(logger *slog.Logger, params encrypt.Params) error {
 	return err
 }
 
-func Run(cmd *cobra.Command, args []string) error {
+func encryptDecryptRun(cmd *cobra.Command, args []string) error {
 	commandLogger := logger.With(slog.String("commandName", encryptCommandName), slog.String("operation", encryptDecryptArgs.Operation.String()))
 	commandLogger.Debug("starting command",
 		slog.Any("args", encryptDecryptArgs),

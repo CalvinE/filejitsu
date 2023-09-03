@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"fmt"
@@ -45,7 +45,7 @@ func setUpLogger(logLevelString string) {
 	}))
 }
 
-func main() {
+func SetupCommand() {
 	rootCmd.PersistentFlags().StringVarP(&logLevelString, "logLevel", "l", "error", "The log level for the command. Supports error, warn, info, debug")
 	bulkRenameInit()
 	encryptDecryptInit()
