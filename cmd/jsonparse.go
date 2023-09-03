@@ -1,10 +1,17 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/spf13/cobra"
 )
+
+type JsonParseArgs struct {
+	Input []byte `json:"input"`
+}
+
+var jsonParseArgs = JsonParseArgs{}
 
 const jsonParseCommandName = "jsonparse"
 
@@ -22,5 +29,7 @@ func jsonParseInit() {
 }
 
 func jsonParseRun(cmd *cobra.Command, args []string) error {
+	var data map[string]interface{}
+	json.Unmarshal(jsonParseArgs.Input, &data)
 	return errors.New("need to implement")
 }
