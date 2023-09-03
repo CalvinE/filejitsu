@@ -2,13 +2,15 @@
 
 This command renames files based on the parameters provided.
 
-| name | description |
-|-----|-----|
-| RootPath| The path in which to perform the rename operation. |
-| TargetRegex| A regular expression to use when selecting files to rename. This can also contain named capture groups, and those named capture groups can be used in the `DestinationTemplate`. Anything in the file name will be altered to match the destination template. See examples below. |
-| DestinationTemplate| A go text template to rename the part of file names that match the `TargetRegex`. Named capture groups in the `TargetRegex` can be used as values in the `DestinationTemplate`. |
-| Recursive| If true the application will also look into directories in the `RootPath` for files to rename. |
-| IsTest| If true the rename operation will not be performed. This can be used to do a dry run to make sure what you think is going to happen is what happens... |
+## Parameters
+
+| Full Name | Short Name | Required | Description | Default |
+|-----|-----|-----|-----|-----|
+| `--rootPath` | `-p` | Y | The path in which to perform the rename operation. | `None` |
+| `--targetRegex` | `-r` | Y | A regular expression to use when selecting files to rename. This can also contain named capture groups, and those named capture groups can be used in the `DestinationTemplate`. Anything in the file name will be altered to match the destination template. See examples below. | `None` |
+| `--destinationTemplate` | `-d` | Y | A go text template to rename the part of file names that match the `TargetRegex`. Named capture groups in the `TargetRegex` can be used as values in the `DestinationTemplate`. | `None` |
+| `--recursive` | `-s` | N | If true the application will also look into directories in the `RootPath` for files to rename. | `false` |
+| `--test` | `-t` | N | If true the rename operation will not be performed. This can be used to do a dry run to make sure what you think is going to happen is what happens... | `false` |
 
 ## Example Usage
 
