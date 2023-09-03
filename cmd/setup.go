@@ -25,6 +25,7 @@ var logLevelString string
 
 func setUpLogger(logLevelString string) {
 	var level slog.Level
+	logWriter := os.Stderr
 	switch strings.ToLower(logLevelString) {
 	case "error":
 		level = slog.LevelError.Level()
@@ -32,10 +33,17 @@ func setUpLogger(logLevelString string) {
 		level = slog.LevelWarn.Level()
 	case "info":
 		level = slog.LevelInfo.Level()
+	case "none":
+		level = slog.LevelError.Level()
+		var err error
+		logWriter, err = os.Open(os.DevNull)
+		if err != nil {
+			panic("could not open os.DevNull!")
+		}
 	default:
 		level = slog.LevelDebug.Level()
 	}
-	logger = *slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+	logger = *slog.New(slog.NewJSONHandler(logWriter, &slog.HandlerOptions{
 		AddSource: true,
 		Level:     level,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
@@ -46,9 +54,10 @@ func setUpLogger(logLevelString string) {
 }
 
 func SetupCommand() {
-	rootCmd.PersistentFlags().StringVarP(&logLevelString, "logLevel", "l", "error", "The log level for the command. Supports error, warn, info, debug")
+	rootCmd.PersistentFlags().StringVarP(&logLevelString, "logLevel", "l", "none", "The log level for the command. Supports error, warn, info, debug")
 	bulkRenameInit()
 	encryptDecryptInit()
+	jsonParseInit()
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("failed to execute: %v", err)
 		os.Exit(1)
