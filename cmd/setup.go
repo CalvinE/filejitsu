@@ -57,7 +57,7 @@ func SetupCommand() {
 	rootCmd.PersistentFlags().StringVarP(&logLevelString, "logLevel", "l", "none", "The log level for the command. Supports error, warn, info, debug")
 	bulkRenameInit()
 	encryptDecryptInit()
-	jsonParseInit()
+	base64CommandInit()
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("failed to execute: %v", err)
 		os.Exit(1)

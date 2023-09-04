@@ -101,12 +101,12 @@ func validateEncryptArgs(ctx context.Context, args EncryptDecryptArgs) (encrypt.
 }
 
 func encryptDecryptInit() {
-	rootCmd.AddCommand(encryptCommand)
 	var operation = "encrypt"
 	encryptCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.InputPath, "input", "i", stdinName, fmt.Sprintf("The input to %s. Can be a file. If not specified it will use %s", operation, stdinName))
 	encryptCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.OutputPath, "output", "o", stdoutName, fmt.Sprintf("The location where the %sed data will be placed. Can be a file. If not specified it will use %s", operation, stdoutName))
 	encryptCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.Passphrase, "passphrase", "p", "", "The passphrase used to encrypt the data.")
 	encryptCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.PassphraseFile, "passphraseFile", "f", "", "The file which will be read to get the passphrase used for encryption/")
+	rootCmd.AddCommand(encryptCommand)
 	operation = "decrypt"
 	decryptCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.InputPath, "input", "i", stdinName, fmt.Sprintf("The input to %s. Can be a file. If not specified it will use %s", operation, stdinName))
 	decryptCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.OutputPath, "output", "o", stdoutName, fmt.Sprintf("The location where the %sed data will be placed. Can be a file. If not specified it will use %s", operation, stdoutName))
@@ -149,9 +149,7 @@ func encryptDecryptRun(cmd *cobra.Command, args []string) error {
 	commandLogger.Debug("starting command",
 		slog.Any("args", encryptDecryptArgs),
 	)
-	defer commandLogger.Debug("ending command",
-		slog.String("name", encryptCommandName),
-	)
+	defer commandLogger.Debug("ending command")
 	params, err := validateEncryptArgs(cmd.Context(), encryptDecryptArgs)
 	if err != nil {
 		logger.Error("failed to validate args", slog.String("errorMessage", err.Error()))
@@ -159,11 +157,13 @@ func encryptDecryptRun(cmd *cobra.Command, args []string) error {
 	}
 	switch encryptDecryptArgs.Operation {
 	case encrypt.OpDecrypt:
+		commandLogger.Debug("decrypt operation selected")
 		if err := encrypt.Decrypt(commandLogger, params); err != nil {
 			commandLogger.Error("failed to decrypt file", slog.String("errorMessage", err.Error()))
 			return err
 		}
 	case encrypt.OpEncrypt:
+		commandLogger.Debug("encrypt operation selected")
 		if err := encrypt.Encrypt(commandLogger, params); err != nil {
 			commandLogger.Error("failed to encrypt file", slog.String("errorMessage", err.Error()))
 			return err

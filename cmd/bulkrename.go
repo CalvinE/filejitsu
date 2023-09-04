@@ -38,12 +38,12 @@ var bulkRenameCommand = &cobra.Command{
 var bkrnArgs = BulkRenameArgs{}
 
 func bulkRenameInit() {
-	rootCmd.AddCommand(bulkRenameCommand)
 	bulkRenameCommand.PersistentFlags().StringVarP(&bkrnArgs.RootPath, "rootPath", "p", "", "The root path to perform the bulk rename in")
 	bulkRenameCommand.PersistentFlags().StringVarP(&bkrnArgs.TargetRegexString, "targetRegex", "r", "", "the target regex to use for renaming with named capture groups present in the destination regex")
 	bulkRenameCommand.PersistentFlags().StringVarP(&bkrnArgs.DestinationTemplateString, "destinationTemplate", "d", "", "the destination template to use for renaming with named capture groups present in the target regex")
 	bulkRenameCommand.PersistentFlags().BoolVarP(&bkrnArgs.Recursive, "recursive", "s", false, "if present the bulk rename will work recursively")
 	bulkRenameCommand.PersistentFlags().BoolVarP(&bkrnArgs.IsTest, "test", "t", false, "if present rename will not happen, but the rename mapping will be put out to stdout")
+	rootCmd.AddCommand(bulkRenameCommand)
 }
 
 func bulkRenameRun(cmd *cobra.Command, args []string) error {
@@ -51,9 +51,7 @@ func bulkRenameRun(cmd *cobra.Command, args []string) error {
 	commandLogger.Debug("starting command",
 		slog.Any("args", bkrnArgs),
 	)
-	defer commandLogger.Debug("ending command",
-		slog.String("name", bulkRenameCommandName),
-	)
+	defer commandLogger.Debug("ending command")
 	params, err := validateBulkrenameArgs(cmd.Context(), bkrnArgs)
 	if err != nil {
 		commandLogger.Error("failed to validate command arguments",
