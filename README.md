@@ -11,5 +11,6 @@
 |Command|Short Name|Readme Link|Description|
 |-----|-----|-----|-----|
 |bulk-rename|bkrn|[BulkRename Command Details](./cmd/BULKRENAME.md)|A bulk file rename utility that will let you use regular expressions (with capture groups) and go text templates to leverage rich bulk rename functionality.|
-|encrypt|encr|[Encrypt / Decrypt Command](./cmd/ENCRYPT_DECRYPT.md)||
-|decrypt|dcry|[Encrypt / Decrypt Command](./cmd/ENCRYPT_DECRYPT.md)||
+|encrypt|encr|[Encrypt / Decrypt Command](./cmd/ENCRYPT_DECRYPT.md)|Encrypt data with AES-256.|
+|decrypt|dcry|[Encrypt / Decrypt Command](./cmd/ENCRYPT_DECRYPT.md)|Decrypt AES-256 encrypted data.|
+|base64|b64|[Base64 Encode / Decode](./cmd/BASE64.md)|Base 64 encode and decode input. Supports standard and url |
