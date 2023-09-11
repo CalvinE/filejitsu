@@ -58,6 +58,7 @@ func SetupCommand() {
 	bulkRenameInit()
 	encryptDecryptInit()
 	base64CommandInit()
+	spaceAnalyzerInit()
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("failed to execute: %v", err)
 		os.Exit(1)

@@ -39,10 +39,10 @@ var bkrnArgs = BulkRenameArgs{}
 
 func bulkRenameInit() {
 	bulkRenameCommand.PersistentFlags().StringVarP(&bkrnArgs.RootPath, "rootPath", "p", "", "The root path to perform the bulk rename in")
-	bulkRenameCommand.PersistentFlags().StringVarP(&bkrnArgs.TargetRegexString, "targetRegex", "r", "", "the target regex to use for renaming with named capture groups present in the destination regex")
-	bulkRenameCommand.PersistentFlags().StringVarP(&bkrnArgs.DestinationTemplateString, "destinationTemplate", "d", "", "the destination template to use for renaming with named capture groups present in the target regex")
-	bulkRenameCommand.PersistentFlags().BoolVarP(&bkrnArgs.Recursive, "recursive", "s", false, "if present the bulk rename will work recursively")
-	bulkRenameCommand.PersistentFlags().BoolVarP(&bkrnArgs.IsTest, "test", "t", false, "if present rename will not happen, but the rename mapping will be put out to stdout")
+	bulkRenameCommand.PersistentFlags().StringVarP(&bkrnArgs.TargetRegexString, "targetRegex", "r", "", "The target regex to use for renaming with named capture groups present in the destination regex")
+	bulkRenameCommand.PersistentFlags().StringVarP(&bkrnArgs.DestinationTemplateString, "destinationTemplate", "d", "", "The destination template to use for renaming with named capture groups present in the target regex")
+	bulkRenameCommand.PersistentFlags().BoolVarP(&bkrnArgs.Recursive, "recursive", "s", false, "If present the bulk rename will work recursively")
+	bulkRenameCommand.PersistentFlags().BoolVarP(&bkrnArgs.IsTest, "test", "t", false, "If present rename will not happen, but the rename mapping will be put out to stdout")
 	rootCmd.AddCommand(bulkRenameCommand)
 }
 
