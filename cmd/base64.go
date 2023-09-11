@@ -43,11 +43,6 @@ func base64CommandInit() {
 }
 
 func base64Run(cmd *cobra.Command, args []string) error {
-	commandLogger := logger.With(slog.String("commandName", base64CommandName))
-	commandLogger.Debug("starting command",
-		slog.Any("args", base64Args),
-	)
-	defer commandLogger.Debug("ending command")
 	var input io.Reader
 	if base64Args.Input == stdinName {
 		input = os.Stdin

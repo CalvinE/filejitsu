@@ -76,7 +76,7 @@ func GetDirContentDetails(logger *slog.Logger, currentPath, currentID string, ca
 				}
 				dirContents = append(dirContents, dInfo)
 			} else if isRegular {
-				logger.Debug("child item is regular file", slog.String("name", name))
+				logger.Debug("child item is regular file", slog.String("fileName", name))
 				fileStat, err := e.Info()
 				if err != nil {
 					logger.Error("failed to get stat on file", slog.Any("file", entry))
@@ -89,7 +89,7 @@ func GetDirContentDetails(logger *slog.Logger, currentPath, currentID string, ca
 				continue
 			}
 
-			logger.Debug("child items is not a dir", slog.String("name", name))
+			// logger.Debug("child items is not a dir", slog.String("name", name))
 		}
 		rootEntity.Children = dirContents
 		return rootEntity, nil

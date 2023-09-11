@@ -47,11 +47,6 @@ func bulkRenameInit() {
 }
 
 func bulkRenameRun(cmd *cobra.Command, args []string) error {
-	commandLogger := logger.With(slog.String("commandName", bulkRenameCommandName))
-	commandLogger.Debug("starting command",
-		slog.Any("args", bkrnArgs),
-	)
-	defer commandLogger.Debug("ending command")
 	params, err := validateBulkrenameArgs(cmd.Context(), bkrnArgs)
 	if err != nil {
 		commandLogger.Error("failed to validate command arguments",
@@ -92,7 +87,7 @@ func bulkRenameRun(cmd *cobra.Command, args []string) error {
 			slog.String("newName", result.New.Name),
 		)
 		if err := processingFunction(commandLogger, result); err != nil {
-			logger.Error("failed to rename file",
+			commandLogger.Error("failed to rename file",
 				slog.String("error", err.Error()),
 				slog.Any("failedOperation", result),
 			)

@@ -3,6 +3,7 @@
 This command enumerates the contents of a directory for analysis. The output is currently JSON and is intended to be analyzed in another application (or sub commands on this command)
 
 ## Parameters
+
 | Full Name | Short Name | Required | Description | Default |
 |-----|-----|-----|-----|-----|
 | `--rootPath` | `-p` | N | The directory to perform analysis on. | `.` |

@@ -145,14 +145,9 @@ func attemptToCloseStreams(logger *slog.Logger, params encrypt.Params) error {
 }
 
 func encryptDecryptRun(cmd *cobra.Command, args []string) error {
-	commandLogger := logger.With(slog.String("commandName", encryptCommandName), slog.String("operation", encryptDecryptArgs.Operation.String()))
-	commandLogger.Debug("starting command",
-		slog.Any("args", encryptDecryptArgs),
-	)
-	defer commandLogger.Debug("ending command")
 	params, err := validateEncryptArgs(cmd.Context(), encryptDecryptArgs)
 	if err != nil {
-		logger.Error("failed to validate args", slog.String("errorMessage", err.Error()))
+		commandLogger.Error("failed to validate args", slog.String("errorMessage", err.Error()))
 		return err
 	}
 	switch encryptDecryptArgs.Operation {
@@ -170,7 +165,7 @@ func encryptDecryptRun(cmd *cobra.Command, args []string) error {
 		}
 	default:
 		err = fmt.Errorf("got invalid operation code: %v", encryptDecryptArgs.Operation)
-		logger.Error("bad operation code encountered", slog.String("errorMessage", err.Error()))
+		commandLogger.Error("bad operation code encountered", slog.String("errorMessage", err.Error()))
 		return err
 	}
 	defer attemptToCloseStreams(commandLogger, params)
