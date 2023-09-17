@@ -15,7 +15,8 @@ type FSEntity struct {
 	Name         string     `json:"name,omitempty"`
 	Extension    string     `json:"extension,omitempty"`
 	FullPath     string     `json:"fullPath,omitempty"`
-	Size         int64      `json:"size,omitempty"`
+	Size         int64      `json:"size"`
+	PrettySize   string     `json:"prettySize,omitempty"`
 	FileHash     string     `json:"fileHash,omitempty"`
 	IsFile       bool       `json:"isFile,omitempty"`
 	IsDir        bool       `json:"isDir,omitempty"`
@@ -24,5 +25,5 @@ type FSEntity struct {
 	Type         uint32     `json:"type"`
 	Permissions  uint32     `json:"permissions"`
 	LastModified time.Time  `json:"lastModified"`
-	Children     []FSEntity `json:"children"`
+	Children     []FSEntity `json:"children,omitempty"`
 }
