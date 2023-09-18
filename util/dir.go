@@ -34,6 +34,10 @@ func GetDirContentDetails(logger *slog.Logger, currentPath, currentID string, ca
 		rootID = uuid.New().String()
 	}
 	rootEntity := FileInfoToFSEntry(logger, currentStat, rootID, currentPath, calculateFileHashes)
+	if recursionCount == 0 {
+		// This is a hack until I feel like working out the issue here. first run of this adds the name to the path again, so removing the last bit for first pass only...
+		rootEntity.FullPath = currentPath
+	}
 	if rootEntity.IsDir {
 		entries, err := os.ReadDir(currentPath)
 		if err != nil {
