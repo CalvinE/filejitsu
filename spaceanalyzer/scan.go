@@ -18,7 +18,7 @@ const (
 
 func populateExtraSizeInfo(item *util.FSEntity) {
 	var size int64 = 0
-	if item.IsDir && len(item.Children) > 0 {
+	if len(item.Children) > 0 {
 		for index, childItem := range item.Children {
 			populateExtraSizeInfo(&childItem)
 			item.Children[index] = childItem

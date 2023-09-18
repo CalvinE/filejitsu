@@ -9,6 +9,14 @@ type File struct {
 	Size      int64  `json:"size"`
 }
 
+type EntityType string
+
+const (
+	FileType      EntityType = "file"
+	DirectoryType EntityType = "directory"
+	OtherType     EntityType = "other"
+)
+
 type FSEntity struct {
 	ID           string     `json:"id,omitempty"`
 	ParentID     string     `json:"parentID,omitempty"`
@@ -16,11 +24,10 @@ type FSEntity struct {
 	Extension    string     `json:"extension,omitempty"`
 	FullPath     string     `json:"fullPath,omitempty"`
 	Size         int64      `json:"size"`
-	PrettySize   string     `json:"prettySize,omitempty"`
+	PrettySize   string     `json:"prettySize"`
 	FileHash     string     `json:"fileHash,omitempty"`
-	IsFile       bool       `json:"isFile,omitempty"`
-	IsDir        bool       `json:"isDir,omitempty"`
-	IsOther      bool       `json:"isOther,omitempty"`
+	IsDir        bool       `json:"isDir"`
+	EntityType   EntityType `json:"entityType"`
 	Mode         uint32     `json:"mode,omitempty"`
 	Type         uint32     `json:"type"`
 	Permissions  uint32     `json:"permissions"`

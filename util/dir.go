@@ -35,10 +35,10 @@ func GetDirContentDetails(logger *slog.Logger, currentPath, currentID string, ca
 	}
 	rootEntity := FileInfoToFSEntry(logger, currentStat, rootID, currentPath, calculateFileHashes)
 	if recursionCount == 0 {
-		// This is a hack until I feel like working out the issue here. first run of this adds the name to the path again, so removing the last bit for first pass only...
+		// TODO: This is a hack until I feel like working out the issue here. first run of this adds the name to the path again, so removing the last bit for first pass only...
 		rootEntity.FullPath = currentPath
 	}
-	if rootEntity.IsDir {
+	if rootEntity.EntityType == DirectoryType {
 		entries, err := os.ReadDir(currentPath)
 		if err != nil {
 			logger.Error("failed to read directory", slog.String("errorMessage", err.Error()))
@@ -52,11 +52,12 @@ func GetDirContentDetails(logger *slog.Logger, currentPath, currentID string, ca
 			isDir := e.IsDir()
 			eType := e.Type()
 			isRegular := eType.IsRegular()
+			entityType := getEntityType(isDir, isRegular)
 			entry := FSEntity{
-				Name:   name,
-				IsDir:  isDir,
-				IsFile: isRegular,
-				Type:   uint32(eType),
+				Name:       name,
+				IsDir:      isDir,
+				EntityType: entityType,
+				Type:       uint32(eType),
 			}
 			if isDir {
 				logger.Debug("child item is dir", slog.String("name", name))
@@ -127,16 +128,15 @@ func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, ePath stri
 			hasher.Reset()
 		}
 	}
-	isOther := !isDir && !isRegular
 	permissions := fi.Mode().Perm()
+	entityType := getEntityType(isDir, isRegular)
 
 	e := FSEntity{
 		Name:         name,
 		Size:         size,
 		FullPath:     fullPath,
 		IsDir:        isDir,
-		IsFile:       isRegular,
-		IsOther:      isOther,
+		EntityType:   entityType,
 		Extension:    extension,
 		FileHash:     fileHash,
 		Mode:         uint32(mode),
@@ -154,15 +154,27 @@ func DirInfoToFSEntry(di fs.DirEntry, parentID, ePath string) FSEntity {
 	permissions := eType.Perm()
 	name := di.Name()
 	fullPath := path.Join(ePath, name)
+	isDir := di.IsDir()
+	isRegular := eType.IsRegular()
+	entityType := getEntityType(isDir, isRegular)
 	e := FSEntity{
 		ID:          uuid.New().String(),
 		ParentID:    parentID,
 		Name:        di.Name(),
-		IsDir:       di.IsDir(),
-		IsFile:      eType.IsRegular(),
+		IsDir:       isDir,
+		EntityType:  entityType,
 		FullPath:    fullPath,
 		Type:        uint32(eType),
 		Permissions: uint32(permissions),
 	}
 	return e
+}
+
+func getEntityType(isDir, isRegular bool) EntityType {
+	if isDir {
+		return DirectoryType
+	} else if isRegular {
+		return FileType
+	}
+	return OtherType
 }
