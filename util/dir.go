@@ -1,8 +1,6 @@
 package util
 
 import (
-	"crypto/sha512"
-	"encoding/hex"
 	"errors"
 	"io/fs"
 	"os"
@@ -104,7 +102,6 @@ func GetDirContentDetails(logger *slog.Logger, currentPath, currentID string, ca
 }
 
 func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, ePath string, calculateFilePath bool) FSEntity {
-	hasher := sha512.New()
 	id := uuid.New().String()
 	name := fi.Name()
 	mode := fi.Mode()
@@ -119,13 +116,16 @@ func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, ePath stri
 	if isRegular {
 		size = fi.Size()
 		extension = path.Ext(name)
-		data, err := os.ReadFile(fullPath)
-		if err != nil {
-			logger.Warn("failed to calculate file hash", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
-		} else {
-			hasher.Write(data)
-			fileHash = hex.EncodeToString(hasher.Sum(nil))
-			hasher.Reset()
+		if calculateFilePath {
+			fd, err := os.Open(fullPath)
+			if err != nil {
+				logger.Warn("failed to calculate file hash", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+			} else {
+				fileHash, err = Sha512HashData(logger, fd)
+				if err != nil {
+					logger.Warn("failed to calculate file hash after open", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+				}
+			}
 		}
 	}
 	permissions := fi.Mode().Perm()
