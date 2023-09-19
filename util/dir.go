@@ -126,6 +126,10 @@ func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, ePath stri
 					logger.Warn("failed to calculate file hash after open", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
 				}
 			}
+			err = fd.Close()
+			if err != nil {
+				logger.Error("failed to close file", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+			}
 		}
 	}
 	permissions := fi.Mode().Perm()
