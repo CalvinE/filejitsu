@@ -26,7 +26,7 @@ type FSEntity struct {
 	Size         int64      `json:"size"`
 	PrettySize   string     `json:"prettySize"`
 	FileHash     string     `json:"fileHash,omitempty"`
-	IsDir        bool       `json:"isDir"`
+	IsDir        bool       `json:"isDir"` // TODO: remove and have client calculate based on entityType?
 	EntityType   EntityType `json:"entityType"`
 	Mode         uint32     `json:"mode,omitempty"`
 	Type         uint32     `json:"type"`

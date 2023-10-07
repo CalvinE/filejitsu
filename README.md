@@ -14,3 +14,4 @@
 |encrypt|encr|[Encrypt / Decrypt Command](./cmd/ENCRYPT_DECRYPT.md)|Encrypt data with AES-256.|
 |decrypt|dcry|[Encrypt / Decrypt Command](./cmd/ENCRYPT_DECRYPT.md)|Decrypt AES-256 encrypted data.|
 |base64|b64|[Base64 Encode / Decode](./cmd/BASE64.md)|Base 64 encode and decode input. Supports standard and url |
+|space-analyzer|sa|[Space Analyzer](./cmd/SPACEANALYZER.md)|Analyzes files on disk. Can be used for a variety of purposes like seeing what taking up disk space, finding duplicate files (by content or by name), etc...|
