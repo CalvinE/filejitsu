@@ -36,6 +36,7 @@ func GetDirContentDetails(logger *slog.Logger, currentPath, currentID string, ca
 		// TODO: This is a hack until I feel like working out the issue here. first run of this adds the name to the path again, so removing the last bit for first pass only...
 		rootEntity.FullPath = currentPath
 	}
+	logger.Info("processing file", slog.String("fullPath", rootEntity.FullPath))
 	if rootEntity.EntityType == DirectoryType {
 		entries, err := os.ReadDir(currentPath)
 		if err != nil {
