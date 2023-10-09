@@ -379,18 +379,6 @@ func TestDelimitedStreamingJSONWrite(t *testing.T) {
 			if dataBuffer.String() != string(tc.ExpectedOutput) {
 				t.Errorf("output did not match expected value")
 			}
-			// readContext, cancel := context.WithTimeout(context.TODO(), time.Hour*1)
-			// defer cancel()
-			// bytesConsumed, obj, err := jsonStreamer.ReadNext(readContext, dataBuffer)
-			// if err != nil {
-			// 	t.Error("buhh..", err)
-			// }
-			// if bytesConsumed != 26 {
-			// 	t.Error("damn")
-			// }
-			// if obj.Name != "a" && obj.Value != "b" {
-			// 	t.Error(":-(")
-			// }
 		})
 	}
 }
