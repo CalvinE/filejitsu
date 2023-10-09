@@ -14,6 +14,10 @@ var (
 	ErrNoObjectBeforeDelimiter = errors.New("no object was present before delimiter")
 )
 
+const (
+	defaultMinBufferSize = 2048
+)
+
 // https://en.wikipedia.org/wiki/JSON_streaming
 
 // This works with JSON objects specifically... no "raw" values...
@@ -61,9 +65,7 @@ func (j *jsonStreamer[T]) delimitedStreamingJSONWrite(ctx context.Context, obj T
 
 func (j *jsonStreamer[T]) lengthPrefixStreamingJSONRead(ctx context.Context, reader io.Reader) (int, T, error) {
 	var result T
-	readBuffer := make([]byte, 1)
-	readLengthBytes := 0
-	lengthBuffer := make([]byte, 0, 16)
+	totalBytesRead := 0
 	doneReadingLength := false
 	for {
 		if doneReadingLength {
@@ -72,39 +74,40 @@ func (j *jsonStreamer[T]) lengthPrefixStreamingJSONRead(ctx context.Context, rea
 		select {
 		case <-ctx.Done():
 			// context was cancelled... let bail?
-			return readLengthBytes, result, ErrContextDone
+			return totalBytesRead, result, ErrContextDone
 		default:
+			upperLimit := totalBytesRead + 1
+			j.growInternalBufferIfNeeded(upperLimit)
+			readBuffer := j.DataBuffer[totalBytesRead:upperLimit]
 			n, err := reader.Read(readBuffer)
-			readLengthBytes += n
+			totalBytesRead += n
 			if err != nil {
 				if err == io.EOF {
-					if readLengthBytes == 0 {
-						return readLengthBytes, result, io.EOF
+					if totalBytesRead == 0 {
+						return totalBytesRead, result, io.EOF
 					}
-					return readLengthBytes, result, fmt.Errorf("hit EOF on reader before encountering a '{': %w", err)
+					return totalBytesRead, result, fmt.Errorf("hit EOF on reader before encountering a '{': %w", err)
 				}
-				return readLengthBytes, result, fmt.Errorf("reader encountered an error: %w", err)
+				return totalBytesRead, result, fmt.Errorf("reader encountered an error: %w", err)
 			}
 			if readBuffer[0] == '{' {
-				readLengthBytes--
 				doneReadingLength = true
 				break
 			}
-			lengthBuffer = append(lengthBuffer, readBuffer[0])
 		}
 	}
-	if len(lengthBuffer) == 0 {
+	readLengthBytes := totalBytesRead - 1
+	if readLengthBytes == 0 {
 		return 1, result, errors.New("no length was found before the JSON object")
 	}
-	length, err := strconv.ParseInt(string(lengthBuffer[:readLengthBytes]), 10, 64)
+	length, err := strconv.ParseInt(string(j.DataBuffer[:readLengthBytes]), 10, 64)
 	if err != nil {
 		return 0, result, err
 	}
-	jsonBuffer := make([]byte, length)
-	jsonBuffer[0] = '{'
 	totalLength := length + int64(readLengthBytes)
-	readBodyBytes := 1
 	doneReadingBody := false
+	upperLimit := totalBytesRead + int(length-1)
+	j.growInternalBufferIfNeeded(upperLimit)
 	// TODO: need to add a buffer for reading the JSON data. Could not all be read in one pull, so need to keep track of how much is read?
 	// Can we resize a slice to make it "right sized" for subsequent pulls?terraform
 	for {
@@ -114,12 +117,12 @@ func (j *jsonStreamer[T]) lengthPrefixStreamingJSONRead(ctx context.Context, rea
 		select {
 		case <-ctx.Done():
 			// context was cancelled... let bail?
-			return readLengthBytes + readBodyBytes, result, ErrContextDone
+			return totalBytesRead, result, ErrContextDone
 		default:
-			remainingBuffer := jsonBuffer[readBodyBytes:]
+			remainingBuffer := j.DataBuffer[totalBytesRead:upperLimit]
 			n, err := reader.Read(remainingBuffer)
-			readBodyBytes += n
-			if int64(readBodyBytes+readLengthBytes) >= totalLength {
+			totalBytesRead += n
+			if int64(totalBytesRead) >= totalLength {
 				// We have read the whole object so we are good to bail!
 				doneReadingBody = true
 				break
@@ -132,18 +135,16 @@ func (j *jsonStreamer[T]) lengthPrefixStreamingJSONRead(ctx context.Context, rea
 			}
 		}
 	}
-	if err = json.Unmarshal(jsonBuffer, &result); err != nil {
+	if err = json.Unmarshal(j.DataBuffer[readLengthBytes:upperLimit], &result); err != nil {
 		return readLengthBytes, result, err
 	}
-	return readLengthBytes + readBodyBytes, result, nil
+	return totalBytesRead, result, nil
 }
 
 func (j *jsonStreamer[T]) delimitedStreamingJSONRead(ctx context.Context, reader io.Reader) (int, T, error) {
 	var result T
 	bytesRead := 0
 	delimiterLength := len(j.Delimiter)
-	readBuffer := make([]byte, delimiterLength)
-	jsonBuffer := make([]byte, 0, 1024)
 	delimiterBytesMatch := 0
 	done := false
 	// TODO: need a buffer for JSON data. after delimiter we can chop off the delimiter and JSON unmarshal the thing.
@@ -155,10 +156,12 @@ func (j *jsonStreamer[T]) delimitedStreamingJSONRead(ctx context.Context, reader
 		case <-ctx.Done():
 			return bytesRead, result, ErrContextDone
 		default:
+			upperLimit := bytesRead + delimiterLength - delimiterBytesMatch
+			j.growInternalBufferIfNeeded(upperLimit)
+			readBuffer := j.DataBuffer[bytesRead:upperLimit]
 			n, err := reader.Read(readBuffer[delimiterBytesMatch:])
 			bytesRead += n
 			if n > 0 {
-				jsonBuffer = append(jsonBuffer, readBuffer[:n]...)
 				for i := 0; i < n; i++ {
 					if readBuffer[i] != j.Delimiter[delimiterBytesMatch] {
 						delimiterBytesMatch = 0
@@ -184,7 +187,7 @@ func (j *jsonStreamer[T]) delimitedStreamingJSONRead(ctx context.Context, reader
 	}
 	dataLength := bytesRead - delimiterLength
 	if dataLength > 0 {
-		err := json.Unmarshal(jsonBuffer[:dataLength], &result)
+		err := json.Unmarshal(j.DataBuffer[:dataLength], &result)
 		if err != nil {
 			return bytesRead, result, fmt.Errorf("failed to unmarshal data: %w", err)
 		}
@@ -192,6 +195,13 @@ func (j *jsonStreamer[T]) delimitedStreamingJSONRead(ctx context.Context, reader
 	}
 	// If we are here we only read a delimiter? So return empty object?
 	return bytesRead, result, ErrNoObjectBeforeDelimiter
+}
+
+func (j *jsonStreamer[T]) growInternalBufferIfNeeded(index int) {
+	if cap(j.DataBuffer) < index {
+		additionalBuffer := make([]byte, 512)
+		j.DataBuffer = append(j.DataBuffer, additionalBuffer...)
+	}
 }
 
 type StreamingJSONHandler[T comparable] interface {
@@ -213,7 +223,7 @@ type StreamingJSONReader[T comparable] interface {
 }
 
 type jsonStreamer[T comparable] struct {
-	// Buffer        *bytes.Buffer
+	DataBuffer    []byte
 	Delimiter     []byte
 	readFunction  StreamJSONReadNextFunc[T]
 	writeFunction StreamJSONWriteObjectFunc[T]
@@ -245,7 +255,9 @@ func (j *jsonStreamer[T]) ReadAll(ctx context.Context, reader io.Reader) (int, [
 }
 
 func NewLengthPrefixStreamJSONHandler[T comparable]() StreamingJSONHandler[T] {
-	jsonStreamer := &jsonStreamer[T]{}
+	jsonStreamer := &jsonStreamer[T]{
+		DataBuffer: make([]byte, defaultMinBufferSize),
+	}
 	jsonStreamer.readFunction = jsonStreamer.lengthPrefixStreamingJSONRead
 	jsonStreamer.writeFunction = jsonStreamer.lengthPrefixStreamingJSONWrite
 	// If delimiter provided, set funcs to delimiter version
@@ -255,7 +267,8 @@ func NewLengthPrefixStreamJSONHandler[T comparable]() StreamingJSONHandler[T] {
 
 func NewDelimitedStreamJSONHandler[T comparable](delimiter []byte) (StreamingJSONHandler[T], error) {
 	jsonStreamer := &jsonStreamer[T]{
-		Delimiter: delimiter,
+		DataBuffer: make([]byte, defaultMinBufferSize),
+		Delimiter:  delimiter,
 	}
 	if len(delimiter) == 0 {
 		return jsonStreamer, errors.New("delimiter is required")
