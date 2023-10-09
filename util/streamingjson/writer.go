@@ -204,25 +204,25 @@ func (j *jsonStreamer[T]) growInternalBufferIfNeeded(index int) {
 	}
 }
 
-type StreamingJSONHandler[T comparable] interface {
+type StreamingJSONHandler[T any] interface {
 	StreamingJSONReader[T]
 	StreamingJSONWriter[T]
 }
 
-type StreamJSONWriteObjectFunc[T comparable] func(ctx context.Context, obj T, output io.Writer) (int, error)
+type StreamJSONWriteObjectFunc[T any] func(ctx context.Context, obj T, output io.Writer) (int, error)
 
-type StreamingJSONWriter[T comparable] interface {
+type StreamingJSONWriter[T any] interface {
 	WriteObject(ctx context.Context, obj T, output io.Writer) (int, error)
 }
 
-type StreamJSONReadNextFunc[T comparable] func(ctx context.Context, input io.Reader) (int, T, error)
+type StreamJSONReadNextFunc[T any] func(ctx context.Context, input io.Reader) (int, T, error)
 
-type StreamingJSONReader[T comparable] interface {
+type StreamingJSONReader[T any] interface {
 	ReadNext(ctx context.Context, input io.Reader) (int, T, error)
 	ReadAll(ctx context.Context, input io.Reader) (int, []T, error)
 }
 
-type jsonStreamer[T comparable] struct {
+type jsonStreamer[T any] struct {
 	DataBuffer    []byte
 	Delimiter     []byte
 	readFunction  StreamJSONReadNextFunc[T]
@@ -254,7 +254,7 @@ func (j *jsonStreamer[T]) ReadAll(ctx context.Context, reader io.Reader) (int, [
 	return totalBytesRead, results, nil
 }
 
-func NewLengthPrefixStreamJSONHandler[T comparable]() StreamingJSONHandler[T] {
+func NewLengthPrefixStreamJSONHandler[T any]() StreamingJSONHandler[T] {
 	jsonStreamer := &jsonStreamer[T]{
 		DataBuffer: make([]byte, defaultMinBufferSize),
 	}
@@ -265,7 +265,7 @@ func NewLengthPrefixStreamJSONHandler[T comparable]() StreamingJSONHandler[T] {
 	return jsonStreamer
 }
 
-func NewDelimitedStreamJSONHandler[T comparable](delimiter []byte) (StreamingJSONHandler[T], error) {
+func NewDelimitedStreamJSONHandler[T any](delimiter []byte) (StreamingJSONHandler[T], error) {
 	jsonStreamer := &jsonStreamer[T]{
 		DataBuffer: make([]byte, defaultMinBufferSize),
 		Delimiter:  delimiter,
