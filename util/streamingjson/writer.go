@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	errContextDone             = errors.New("operation cancelled by context")
-	errNoObjectBeforeDelimiter = errors.New("no object was present before delimiter")
+	ErrContextDone             = errors.New("operation cancelled by context")
+	ErrNoObjectBeforeDelimiter = errors.New("no object was present before delimiter")
 )
 
 // https://en.wikipedia.org/wiki/JSON_streaming
@@ -72,12 +72,15 @@ func (j *jsonStreamer[T]) lengthPrefixStreamingJSONRead(ctx context.Context, rea
 		select {
 		case <-ctx.Done():
 			// context was cancelled... let bail?
-			return readLengthBytes, result, errContextDone
+			return readLengthBytes, result, ErrContextDone
 		default:
 			n, err := reader.Read(readBuffer)
 			readLengthBytes += n
 			if err != nil {
 				if err == io.EOF {
+					if readLengthBytes == 0 {
+						return readLengthBytes, result, io.EOF
+					}
 					return readLengthBytes, result, fmt.Errorf("hit EOF on reader before encountering a '{': %w", err)
 				}
 				return readLengthBytes, result, fmt.Errorf("reader encountered an error: %w", err)
@@ -89,6 +92,9 @@ func (j *jsonStreamer[T]) lengthPrefixStreamingJSONRead(ctx context.Context, rea
 			}
 			lengthBuffer = append(lengthBuffer, readBuffer[0])
 		}
+	}
+	if len(lengthBuffer) == 0 {
+		return 1, result, errors.New("no length was found before the JSON object")
 	}
 	length, err := strconv.ParseInt(string(lengthBuffer[:readLengthBytes]), 10, 64)
 	if err != nil {
@@ -108,7 +114,7 @@ func (j *jsonStreamer[T]) lengthPrefixStreamingJSONRead(ctx context.Context, rea
 		select {
 		case <-ctx.Done():
 			// context was cancelled... let bail?
-			return readLengthBytes + readBodyBytes, result, errContextDone
+			return readLengthBytes + readBodyBytes, result, ErrContextDone
 		default:
 			remainingBuffer := jsonBuffer[readBodyBytes:]
 			n, err := reader.Read(remainingBuffer)
@@ -147,7 +153,7 @@ func (j *jsonStreamer[T]) delimitedStreamingJSONRead(ctx context.Context, reader
 		}
 		select {
 		case <-ctx.Done():
-			return bytesRead, result, errContextDone
+			return bytesRead, result, ErrContextDone
 		default:
 			n, err := reader.Read(readBuffer[delimiterBytesMatch:])
 			bytesRead += n
@@ -166,6 +172,8 @@ func (j *jsonStreamer[T]) delimitedStreamingJSONRead(ctx context.Context, reader
 					}
 				}
 			}
+			// TODO: have a check for error function for length prefix and delimited?
+			// Or am I over thinking it. The delimited works by having an object then a delimiter and repeat. Starting with the delimiter is dumb and should result in a error?
 			if err != nil {
 				if err == io.EOF {
 					return bytesRead, result, err
@@ -183,7 +191,7 @@ func (j *jsonStreamer[T]) delimitedStreamingJSONRead(ctx context.Context, reader
 		return bytesRead, result, nil
 	}
 	// If we are here we only read a delimiter? So return empty object?
-	return bytesRead, result, errNoObjectBeforeDelimiter
+	return bytesRead, result, ErrNoObjectBeforeDelimiter
 }
 
 type StreamingJSONHandler[T comparable] interface {
@@ -201,6 +209,7 @@ type StreamJSONReadNextFunc[T comparable] func(ctx context.Context, input io.Rea
 
 type StreamingJSONReader[T comparable] interface {
 	ReadNext(ctx context.Context, input io.Reader) (int, T, error)
+	ReadAll(ctx context.Context, input io.Reader) (int, []T, error)
 }
 
 type jsonStreamer[T comparable] struct {
@@ -216,6 +225,23 @@ func (j *jsonStreamer[T]) WriteObject(ctx context.Context, input T, output io.Wr
 
 func (j *jsonStreamer[T]) ReadNext(ctx context.Context, input io.Reader) (int, T, error) {
 	return j.readFunction(ctx, input)
+}
+
+func (j *jsonStreamer[T]) ReadAll(ctx context.Context, reader io.Reader) (int, []T, error) {
+	results := make([]T, 0, 5)
+	totalBytesRead := 0
+	for {
+		n, obj, err := j.readFunction(ctx, reader)
+		totalBytesRead += n
+		if err != nil {
+			if err == io.EOF && n == 0 {
+				break
+			}
+			return totalBytesRead, results, err
+		}
+		results = append(results, obj)
+	}
+	return totalBytesRead, results, nil
 }
 
 func NewLengthPrefixStreamJSONHandler[T comparable]() StreamingJSONHandler[T] {
