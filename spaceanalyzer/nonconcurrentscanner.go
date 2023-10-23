@@ -1,8 +1,7 @@
-package util
+package spaceanalyzer
 
 import (
 	"errors"
-	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,7 +10,18 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func GetDirContentDetails(logger *slog.Logger, currentPath, currentID string, calculateFileHashes bool, maxRecursion, recursionCount int) (FSEntity, error) {
+type NonConcurrentFSSCanner interface {
+	Scan(logger *slog.Logger, currentPath, currentID string, calculateFileHashes bool, maxRecursion, recursionCount int) (FSEntity, error)
+}
+
+type nonConcurrentFSScanner struct {
+}
+
+func NewNonConcurrentFSScanner() NonConcurrentFSSCanner {
+	return &nonConcurrentFSScanner{}
+}
+
+func (ncs nonConcurrentFSScanner) Scan(logger *slog.Logger, currentPath, currentID string, calculateFileHashes bool, maxRecursion, recursionCount int) (FSEntity, error) {
 	logger.Debug("attempting to list contents of provided path", slog.String("currentPath", currentPath), slog.Int("recursionCount", recursionCount))
 	if !filepath.IsAbs(currentPath) {
 		var err error
@@ -36,7 +46,7 @@ func GetDirContentDetails(logger *slog.Logger, currentPath, currentID string, ca
 		// TODO: This is a hack until I feel like working out the issue here. first run of this adds the name to the path again, so removing the last bit for first pass only...
 		rootEntity.FullPath = currentPath
 	}
-	logger.Info("processing file", slog.String("fullPath", rootEntity.FullPath))
+	logger.Info("processing file", slog.String("path", rootEntity.FullPath))
 	if rootEntity.EntityType == DirectoryType {
 		entries, err := os.ReadDir(currentPath)
 		if err != nil {
@@ -66,7 +76,7 @@ func GetDirContentDetails(logger *slog.Logger, currentPath, currentID string, ca
 				} else {
 					// populate children
 					newPath := path.Join(currentPath, dInfo.Name)
-					subDInfo, err := GetDirContentDetails(logger, newPath, dInfo.ID, calculateFileHashes, maxRecursion, recursionCount+1)
+					subDInfo, err := ncs.Scan(logger, newPath, dInfo.ID, calculateFileHashes, maxRecursion, recursionCount+1)
 					if err != nil {
 						logger.Error("failed to get details for child directory", slog.String("path", newPath), slog.String("errorMessage", err.Error()))
 						return FSEntity{}, err
@@ -100,86 +110,4 @@ func GetDirContentDetails(logger *slog.Logger, currentPath, currentID string, ca
 	}
 	logger.Error("path provided was not a directory")
 	return FSEntity{}, errors.New("path provided was not a directory")
-}
-
-func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, ePath string, calculateFilePath bool) FSEntity {
-	id := uuid.New().String()
-	name := fi.Name()
-	mode := fi.Mode()
-	eType := mode.Type()
-	isDir := fi.IsDir()
-	isRegular := eType.IsRegular()
-	size := int64(0)
-	lastModified := fi.ModTime()
-	extension := ""
-	fileHash := ""
-	fullPath := path.Join(ePath, name)
-	if isRegular {
-		size = fi.Size()
-		extension = path.Ext(name)
-		if calculateFilePath {
-			fd, err := os.Open(fullPath)
-			if err != nil {
-				logger.Warn("failed to calculate file hash", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
-			} else {
-				fileHash, err = Sha512HashData(logger, fd)
-				if err != nil {
-					logger.Warn("failed to calculate file hash after open", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
-				}
-			}
-			err = fd.Close()
-			if err != nil {
-				logger.Error("failed to close file", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
-			}
-		}
-	}
-	permissions := fi.Mode().Perm()
-	entityType := getEntityType(isDir, isRegular)
-
-	e := FSEntity{
-		Name:         name,
-		Size:         size,
-		FullPath:     fullPath,
-		IsDir:        isDir,
-		EntityType:   entityType,
-		Extension:    extension,
-		FileHash:     fileHash,
-		Mode:         uint32(mode),
-		Type:         uint32(eType),
-		Permissions:  uint32(permissions),
-		LastModified: lastModified,
-		ParentID:     parentID,
-		ID:           id,
-	}
-	return e
-}
-
-func DirInfoToFSEntry(di fs.DirEntry, parentID, ePath string) FSEntity {
-	eType := di.Type()
-	permissions := eType.Perm()
-	name := di.Name()
-	fullPath := path.Join(ePath, name)
-	isDir := di.IsDir()
-	isRegular := eType.IsRegular()
-	entityType := getEntityType(isDir, isRegular)
-	e := FSEntity{
-		ID:          uuid.New().String(),
-		ParentID:    parentID,
-		Name:        di.Name(),
-		IsDir:       isDir,
-		EntityType:  entityType,
-		FullPath:    fullPath,
-		Type:        uint32(eType),
-		Permissions: uint32(permissions),
-	}
-	return e
-}
-
-func getEntityType(isDir, isRegular bool) EntityType {
-	if isDir {
-		return DirectoryType
-	} else if isRegular {
-		return FileType
-	}
-	return OtherType
 }

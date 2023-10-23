@@ -1,66 +1,125 @@
 package spaceanalyzer
 
 import (
-	"fmt"
+	"io/fs"
+	"os"
+	"path"
 
 	"github.com/calvine/filejitsu/util"
+	"github.com/google/uuid"
 	"golang.org/x/exp/slog"
 )
 
-const (
-	KB = 1 << 10
-	MB = 1 << (10 * (1 + iota))
-	GB
-	TB
-	PB
-	EB
-)
-
-func populateExtraSizeInfo(item *util.FSEntity) {
-	var size int64 = 0
+func populateExtraSizeInfo(item *FSEntity) {
 	if len(item.Children) > 0 {
+		var size int64
 		for index, childItem := range item.Children {
 			populateExtraSizeInfo(&childItem)
 			item.Children[index] = childItem
 			size += childItem.Size
 		}
-	} else {
-		size += item.Size
+		item.Size = size
 	}
-	item.Size = size
-	var divSize float64
-	var unit string
-	if item.Size >= EB {
-		divSize = float64(item.Size) / float64(EB)
-		unit = "EB"
-	} else if item.Size >= PB {
-		divSize = float64(item.Size) / float64(PB)
-		unit = "PB"
-	} else if item.Size >= TB {
-		divSize = float64(item.Size) / float64(TB)
-		unit = "TB"
-	} else if item.Size >= GB {
-		divSize = float64(item.Size) / float64(GB)
-		unit = "GB"
-	} else if item.Size >= MB {
-		divSize = float64(item.Size) / float64(MB)
-		unit = "MB"
-	} else if item.Size >= KB {
-		divSize = float64(item.Size) / float64(KB)
-		unit = "KB"
-	} else {
-		divSize = float64(item.Size)
-		unit = "B"
-	}
-	item.PrettySize = fmt.Sprintf("%.2f %s", divSize, unit)
+	item.PrettySize = util.GetPrettyBytesSize(int64(item.Size))
 }
 
-func Scan(logger *slog.Logger, params ScanParams) (util.FSEntity, error) {
-	info, err := util.GetDirContentDetails(logger, params.RootPath, "", params.CalculateFileHashes, params.MaxRecursion, 0)
+func Scan(logger *slog.Logger, params ScanParams) (FSEntity, error) {
+	// ncs := NewNonConcurrentFSScanner()
+	cfs := NewConcurrentFSScanner()
+	info, err := cfs.Scan(logger, params.RootPath, "base", params.CalculateFileHashes, params.MaxRecursion)
 	if err != nil {
 		logger.Error("failed to get dir content details", slog.String("errorMessage", err.Error()), slog.String("rootPath", params.RootPath))
-		return util.FSEntity{}, err
+		return FSEntity{}, err
 	}
+	logger.Debug("populating extra size info recursively")
 	populateExtraSizeInfo(&info)
+	logger.Debug("finished populating extra size info recursively")
 	return info, nil
+}
+
+func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, ePath string, shouldCalculateFileHash bool) FSEntity {
+	id := uuid.New().String()
+	name := fi.Name()
+	mode := fi.Mode()
+	eType := mode.Type()
+	isDir := fi.IsDir()
+	isRegular := eType.IsRegular()
+	size := int64(0)
+	lastModified := fi.ModTime()
+	extension := ""
+	fileHash := ""
+	fullPath := path.Join(ePath, name)
+	if isRegular {
+		size = fi.Size()
+		extension = path.Ext(name)
+		if shouldCalculateFileHash {
+			fileHash = calculateFileHash(logger, fullPath, fileHash)
+		}
+	}
+	permissions := fi.Mode().Perm()
+	entityType := getEntityType(isDir, isRegular)
+
+	e := FSEntity{
+		Name:         name,
+		Size:         size,
+		FullPath:     fullPath,
+		IsDir:        isDir,
+		EntityType:   entityType,
+		Extension:    extension,
+		FileHash:     fileHash,
+		Mode:         uint32(mode),
+		Type:         uint32(eType),
+		Permissions:  uint32(permissions),
+		LastModified: lastModified,
+		ParentID:     parentID,
+		ID:           id,
+	}
+	return e
+}
+
+func calculateFileHash(logger *slog.Logger, fullPath, fileHash string) string {
+	fd, err := os.Open(fullPath)
+	if err != nil {
+		logger.Warn("failed to calculate file hash", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+	} else {
+		fileHash, err = util.Sha512HashData(logger, fd)
+		if err != nil {
+			logger.Warn("failed to calculate file hash after open", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+		}
+	}
+	err = fd.Close()
+	if err != nil {
+		logger.Error("failed to close file", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+	}
+	return fileHash
+}
+
+func DirInfoToFSEntry(di fs.DirEntry, parentID, ePath string) FSEntity {
+	eType := di.Type()
+	permissions := eType.Perm()
+	name := di.Name()
+	fullPath := path.Join(ePath, name)
+	isDir := di.IsDir()
+	isRegular := eType.IsRegular()
+	entityType := getEntityType(isDir, isRegular)
+	e := FSEntity{
+		ID:          uuid.New().String(),
+		ParentID:    parentID,
+		Name:        di.Name(),
+		IsDir:       isDir,
+		EntityType:  entityType,
+		FullPath:    fullPath,
+		Type:        uint32(eType),
+		Permissions: uint32(permissions),
+	}
+	return e
+}
+
+func getEntityType(isDir, isRegular bool) EntityType {
+	if isDir {
+		return DirectoryType
+	} else if isRegular {
+		return FileType
+	}
+	return OtherType
 }

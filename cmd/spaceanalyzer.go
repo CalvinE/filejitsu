@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/calvine/filejitsu/spaceanalyzer"
-	"github.com/calvine/filejitsu/util"
 	"github.com/calvine/filejitsu/util/streamingjson"
 	"github.com/spf13/cobra"
 )
@@ -54,7 +53,7 @@ func spaceAnalyzerScanRun(cmd *cobra.Command, args []string) error {
 	// }
 	output := os.Stdout
 	// TODO: add a option to enable streaming JSON and if not present do normal ish.
-	jsonStreamer := streamingjson.NewLengthPrefixStreamJSONHandler[util.FSEntity]()
+	jsonStreamer := streamingjson.NewLengthPrefixStreamJSONHandler[spaceanalyzer.FSEntity]()
 	WriteOutputAsStreamingJSON(cmd.Context(), info, output, jsonStreamer)
 	// jsonStreamer.WriteObject(cmd.Context(), info, os.Stdout)
 	// _, err = output.WriteString(string(infoString))
@@ -64,7 +63,7 @@ func spaceAnalyzerScanRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func WriteOutputAsStreamingJSON(ctx context.Context, rootInfo util.FSEntity, writer io.Writer, streamingHandler streamingjson.StreamingJSONWriter[util.FSEntity]) error {
+func WriteOutputAsStreamingJSON(ctx context.Context, rootInfo spaceanalyzer.FSEntity, writer io.Writer, streamingHandler streamingjson.StreamingJSONWriter[spaceanalyzer.FSEntity]) error {
 	if rootInfo.IsDir {
 		for _, i := range rootInfo.Children {
 			if err := WriteOutputAsStreamingJSON(ctx, i, writer, streamingHandler); err != nil {
