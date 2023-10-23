@@ -53,12 +53,13 @@ func (cfs *concurrentFSScanner) scan(logger *slog.Logger, entityPath, parentID s
 	}
 	entity := FileInfoToFSEntry(logger, currentStat, parentID, currentPath, shouldCalculateFileHashes)
 	logger = logger.With("id", entity.ID)
-	if recursionCount == 0 {
-		// TODO: This is a hack until I feel like working out the issue here. first run of this adds the name to the path again, so removing the last bit for first pass only...
-		entity.FullPath = currentPath
-	}
+	// if recursionCount == 0 {
+	// TODO: This is a hack until I feel like working out the issue here. first run of this adds the name to the path again, so removing the last bit for first pass only...
+	entity.FullPath = currentPath
+	// }
 	logger.Info("processing file", slog.String("path", entity.FullPath))
 	if entity.EntityType == DirectoryType {
+		logger.Debug("entity is a directory", slog.Any("entity", entity))
 		fsChan := make(chan FSEntity, 10)
 		errorChan := make(chan error, 10)
 		defer func() {
@@ -120,13 +121,20 @@ func (cfs *concurrentFSScanner) scan(logger *slog.Logger, entityPath, parentID s
 					logger.Error("failed to get stat on file", slog.Any("file", entry))
 					return FSEntity{}, err
 				}
+				childEntity := FileInfoToFSEntry(logger, fileStat, parentID, entityPath, shouldCalculateFileHashes)
+				dirContents = append(dirContents, childEntity)
 				// wg.Add(1)
-				go func() {
-					childEntity := FileInfoToFSEntry(logger, fileStat, parentID, entityPath, shouldCalculateFileHashes)
-					fsChan <- childEntity
-					// dirContents = append(dirContents, childEntity)
-					// wg.Done()
-				}()
+				// go func() {
+				// 	defer func() {
+				// 		if r := recover(); r != nil {
+				// 			logger.Error("panic for file", slog.Any("reason", r))
+				// 		}
+				// 	}()
+				// 	childEntity := FileInfoToFSEntry(logger, fileStat, parentID, entityPath, shouldCalculateFileHashes)
+				// 	fsChan <- childEntity
+				// 	// dirContents = append(dirContents, childEntity)
+				// 	// wg.Done()
+				// }()
 				// fInfo := FileInfoToFSEntry(logger, fileStat, parentID, currentPath, calculateFileHashes)
 				// fsChan <- fInfo
 			} else {
