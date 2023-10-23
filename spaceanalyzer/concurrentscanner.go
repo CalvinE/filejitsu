@@ -1,11 +1,18 @@
 package spaceanalyzer
 
 import (
+	"errors"
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 
+	"github.com/google/uuid"
 	"golang.org/x/exp/slog"
+)
+
+var (
+	ErrRecursionLimit = errors.New("recursion limit")
 )
 
 type ConcurrentFSScanner interface {
@@ -24,13 +31,48 @@ func (cfs *concurrentFSScanner) Scan(logger *slog.Logger, entityPath, rootID str
 		logger.Debug("creating new id because one provided was blank")
 		rootID = "root"
 	}
-	logger.Debug("running concurrent scan")
-	entity, err := cfs.scan(logger, entityPath, rootID, shouldCalculateFileHashes, maxRecursion, 0)
+	fsJobs, err := enumerateScanTargets(logger, entityPath, rootID, maxRecursion)
+	if err != nil {
+		logger.Error("failed to enumerate jobs", slog.String("errorMessage", err.Error()))
+	}
+	logger.Debug("running concurrent scan", slog.Any("fsJobs", fsJobs))
+	entity, err := processJobs(logger, fsJobs, shouldCalculateFileHashes)
+	// entity, err := cfs.scan(logger, entityPath, rootID, shouldCalculateFileHashes, maxRecursion, 0)
 	if err != nil {
 		logger.Error("failed to scan entity", slog.String("errorMessage", err.Error()))
 		return FSEntity{}, err
 	}
 	logger.Debug("concurrent scan complete")
+	return entity, nil
+}
+
+func processJobs(logger *slog.Logger, job FSJob, shouldCalculateFileHashes bool) (FSEntity, error) {
+	wg := sync.WaitGroup{}
+	entity := FileInfoToFSEntry(logger, job.Info, job.ParentID, job.FullPath, shouldCalculateFileHashes)
+	numChildren := len(job.Children)
+	if numChildren > 0 {
+		entity.Children = make([]FSEntity, 0, numChildren)
+		wg.Add(numChildren)
+		logger.Debug("spinning up go routine to process children")
+		go func() {
+			for _, j := range job.Children {
+				if j.IsDir {
+					childDir, err := processJobs(logger, j, shouldCalculateFileHashes)
+					if err != nil {
+						logger.Error("failed to process child directory", slog.Any("childDirectory", childDir))
+						// TODO: add an error entity?
+						continue
+					}
+					entity.Children = append(entity.Children, childDir)
+				} else {
+					childEntity := FileInfoToFSEntry(logger, j.Info, j.ParentID, j.FullPath, shouldCalculateFileHashes)
+					entity.Children = append(entity.Children, childEntity)
+				}
+				wg.Done()
+			}
+		}()
+	}
+	wg.Wait()
 	return entity, nil
 }
 
@@ -171,4 +213,60 @@ func (cfs *concurrentFSScanner) scan(logger *slog.Logger, entityPath, parentID s
 	}
 	slog.Debug("returning entity", slog.Any("entity", entity))
 	return entity, nil
+}
+
+func enumerateScanTargets(logger *slog.Logger, entityPath, parentID string, maxRecursion int) (FSJob, error) {
+	return recursiveEnumerateScanTargets(logger, entityPath, parentID, maxRecursion, 0)
+}
+
+func recursiveEnumerateScanTargets(logger *slog.Logger, entityPath, parentID string, maxRecursion, recursionCount int) (FSJob, error) {
+	logger = logger.With(slog.String("parentID", parentID), slog.String("entityPath", entityPath))
+	currentPath := entityPath
+	var job FSJob
+	if !filepath.IsAbs(currentPath) {
+		var err error
+		currentPath, err = filepath.Abs(currentPath)
+		if err != nil {
+			logger.Error("failed to get absolute path for non absolute input", slog.String("entityPath", entityPath), slog.String("errorMessage", err.Error()))
+			return job, err
+		}
+	}
+	if maxRecursion > -1 && maxRecursion >= recursionCount {
+		logger.Warn("skipping call to enumerate entity due to max recursion setting", slog.Int("maxRecursion", maxRecursion), slog.Int("recursionCount", recursionCount), slog.String("currentPath", currentPath))
+		return job, ErrRecursionLimit
+	}
+	currentStat, err := os.Stat(currentPath)
+	if err != nil {
+		logger.Error("failed to get stat on current path", slog.String("errorMessage", err.Error()))
+		return job, err
+	}
+	id := uuid.New().String()
+	job.ID = id
+	job.ParentID = parentID
+	job.Info = currentStat
+	job.FullPath = currentPath
+	logger = logger.With("id", id)
+	if currentStat.IsDir() {
+		job.IsDir = true
+		dirContents, err := os.ReadDir(currentPath)
+		if err != nil {
+			logger.Error("failed to get contents of directory", slog.String("errorMessage", err.Error()))
+		}
+		numChildren := len(dirContents)
+		logger.Debug("dir contents retrieved", slog.Int("numChildren", numChildren))
+		dirChildren := make([]FSJob, 0, numChildren)
+		for _, d := range dirContents {
+			childName := d.Name()
+			childPath := path.Join(currentPath, childName)
+			childJob, err := recursiveEnumerateScanTargets(logger, childPath, job.ID, maxRecursion, recursionCount+1)
+			if err != nil {
+				// Should we die here or return that there is an error?
+				logger.Error("failed to enumerate child entity", slog.String("childPath", childPath), slog.String("errorMessage", err.Error()))
+				return job, err
+			}
+			dirChildren = append(dirChildren, childJob)
+		}
+		job.Children = dirChildren
+	}
+	return job, nil
 }

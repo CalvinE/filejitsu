@@ -1,6 +1,9 @@
 package spaceanalyzer
 
-import "time"
+import (
+	"io/fs"
+	"time"
+)
 
 type EntityType string
 
@@ -26,4 +29,13 @@ type FSEntity struct {
 	Permissions  uint32     `json:"permissions"`
 	LastModified time.Time  `json:"lastModified"`
 	Children     []FSEntity `json:"children,omitempty"`
+}
+
+type FSJob struct {
+	ID       string
+	ParentID string
+	FullPath string
+	Info     fs.FileInfo
+	IsDir    bool
+	Children []FSJob
 }
