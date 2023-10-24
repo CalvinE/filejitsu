@@ -109,7 +109,7 @@ func collateEntities(logger *slog.Logger, entity FSEntity, files map[string][]FS
 		}
 	}
 	entity.Children = append(entity.Children, entityFiles...)
-	logger.Debug("entity collated", slog.Int("numFiles", numFiles), slog.Int("numDirs", numDirs))
+	logger.Debug("entity collated", slog.String("entityID", entity.ID), slog.Int("numFiles", numFiles), slog.Int("numDirs", numDirs))
 	return entity
 }
 
