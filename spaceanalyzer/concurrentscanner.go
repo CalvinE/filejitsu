@@ -77,7 +77,7 @@ func (cfs *concurrentFSScanner) Scan(logger *slog.Logger, entityPath, rootID str
 	wg.Wait()
 	rootEntity := dirs[rootID]
 	delete(dirs, rootID)
-	entity := collateEntities(rootEntity, files, dirs)
+	entity := collateEntities(logger, rootEntity, files, dirs)
 
 	// logger.Debug("running concurrent scan", slog.Any("fsJobs", jobsChan))
 	// entity, err := processJobs(logger, jobsChan, shouldCalculateFileHashes)
@@ -90,21 +90,26 @@ func (cfs *concurrentFSScanner) Scan(logger *slog.Logger, entityPath, rootID str
 	return entity, nil
 }
 
-func collateEntities(entity FSEntity, files map[string][]FSEntity, dirs map[string]FSEntity) FSEntity {
+func collateEntities(logger *slog.Logger, entity FSEntity, files map[string][]FSEntity, dirs map[string]FSEntity) FSEntity {
 	// add files
 	entityFiles := files[entity.ID]
+	numFiles := 0
+	numDirs := 0
 	if len(entityFiles) > 0 {
 		delete(files, entity.ID)
+		numFiles += len(entityFiles)
 		entity.Children = append(entity.Children, entityFiles...)
 	}
 	// add directories
 	for _, v := range dirs {
 		if v.ParentID == entity.ID {
-			childDir := collateEntities(v, files, dirs)
+			childDir := collateEntities(logger, v, files, dirs)
 			entityFiles = append(entityFiles, childDir)
+			numDirs++
 		}
 	}
 	entity.Children = append(entity.Children, entityFiles...)
+	logger.Debug("entity collated", slog.Int("numFiles", numFiles), slog.Int("numDirs", numDirs))
 	return entity
 }
 
