@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"sync"
 
 	"github.com/google/uuid"
@@ -25,9 +26,11 @@ type ConcurrentFSScanner interface {
 }
 
 type concurrentFSScanner struct {
+	// TODO: add concurrency limit to this struct and default to runtime.NumCPUs make concurrency limit configurable.
 }
 
 func NewConcurrentFSScanner() ConcurrentFSScanner {
+	runtime.NumCPU()
 	return &concurrentFSScanner{}
 }
 
@@ -48,8 +51,8 @@ func (cfs *concurrentFSScanner) Scan(logger *slog.Logger, entityPath, rootID str
 			// TODO: go routine this
 			// TODO: mutex log the map write...
 			j, ok := <-jobsChan
-			limiter<-true
 			wg.Add(1)
+			limiter <- true
 			if !ok {
 				working = false
 				logger.Warn("jobs channel closed")
