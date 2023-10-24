@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	concurrencyLimit = 1 //16
+	concurrencyLimit = 32
 )
 
 var (
@@ -34,6 +34,7 @@ func NewConcurrentFSScanner() ConcurrentFSScanner {
 func (cfs *concurrentFSScanner) Scan(logger *slog.Logger, entityPath, rootID string, shouldCalculateFileHashes bool, maxRecursion int) (FSEntity, error) {
 	files := make(map[string][]FSEntity)
 	dirs := make(map[string]FSEntity)
+	limiter := make(chan bool, concurrencyLimit)
 	wg := sync.WaitGroup{}
 	if len(rootID) == 0 {
 		logger.Debug("creating new id because one provided was blank")
@@ -47,9 +48,9 @@ func (cfs *concurrentFSScanner) Scan(logger *slog.Logger, entityPath, rootID str
 			// TODO: go routine this
 			// TODO: mutex log the map write...
 			j, ok := <-jobsChan
+			limiter<-true
 			wg.Add(1)
 			if !ok {
-				// TODO: if the item is not empty process it...
 				working = false
 				logger.Warn("jobs channel closed")
 				if j == emptyFSJob {
@@ -70,11 +71,13 @@ func (cfs *concurrentFSScanner) Scan(logger *slog.Logger, entityPath, rootID str
 					files[j.ParentID] = append(files[j.ParentID], file)
 					mutex.Unlock()
 				}
+				<-limiter
 				wg.Done()
 			}()
 		}
 	}()
 	wg.Wait()
+	close(limiter)
 	rootEntity := dirs[rootID]
 	delete(dirs, rootID)
 	entity := collateEntities(logger, rootEntity, files, dirs)
