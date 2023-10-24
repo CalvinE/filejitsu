@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	concurrencyLimit = 16
+	concurrencyLimit = 1 //16
 )
 
 var (
@@ -104,11 +104,11 @@ func collateEntities(logger *slog.Logger, entity FSEntity, files map[string][]FS
 	for _, v := range dirs {
 		if v.ParentID == entity.ID {
 			childDir := collateEntities(logger, v, files, dirs)
-			entityFiles = append(entityFiles, childDir)
+			entity.Children = append(entity.Children, childDir)
 			numDirs++
 		}
 	}
-	entity.Children = append(entity.Children, entityFiles...)
+	// entity.Children = append(entity.Children, entityFiles...)
 	logger.Debug("entity collated", slog.String("entityID", entity.ID), slog.Int("numFiles", numFiles), slog.Int("numDirs", numDirs))
 	return entity
 }

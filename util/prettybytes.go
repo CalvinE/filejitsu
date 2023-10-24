@@ -4,8 +4,8 @@ import "fmt"
 
 const (
 	B  float64 = 1
-	KB float64 = 1 << 10
-	MB float64 = 1 << (10 * (1 + iota))
+	KB float64 = 1 << (10 * iota)
+	MB
 	GB
 	TB
 	PB

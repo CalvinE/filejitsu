@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 
 	"github.com/calvine/filejitsu/spaceanalyzer"
 	"github.com/calvine/filejitsu/util/streamingjson"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slog"
 )
 
 type SpaceAnalyzerArgs struct {
@@ -46,20 +48,24 @@ func spaceAnalyzerScanRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// infoString, err := json.MarshalIndent(info, "", "  ")
-	// if err != nil {
-	// 	commandLogger.Error("failed to marshal data to JSON", slog.String("errorMessage", err.Error()))
-	// 	return err
-	// }
 	output := os.Stdout
 	// TODO: add a option to enable streaming JSON and if not present do normal ish.
-	jsonStreamer := streamingjson.NewLengthPrefixStreamJSONHandler[spaceanalyzer.FSEntity]()
-	WriteOutputAsStreamingJSON(cmd.Context(), info, output, jsonStreamer)
+	streamingOutput := true
+	if streamingOutput {
+		jsonStreamer := streamingjson.NewLengthPrefixStreamJSONHandler[spaceanalyzer.FSEntity]()
+		WriteOutputAsStreamingJSON(cmd.Context(), info, output, jsonStreamer)
+	} else {
+		infoString, err := json.MarshalIndent(info, "", "  ")
+		if err != nil {
+			commandLogger.Error("failed to marshal data to JSON", slog.String("errorMessage", err.Error()))
+			return err
+		}
+		_, err = output.WriteString(string(infoString))
+		if err != nil {
+			commandLogger.Error("failed to write data to stdout", slog.String("errorMessage", err.Error()))
+		}
+	}
 	// jsonStreamer.WriteObject(cmd.Context(), info, os.Stdout)
-	// _, err = output.WriteString(string(infoString))
-	// if err != nil {
-	// 	commandLogger.Error("failed to write data to stdout", slog.String("errorMessage", err.Error()))
-	// }
 	return nil
 }
 
