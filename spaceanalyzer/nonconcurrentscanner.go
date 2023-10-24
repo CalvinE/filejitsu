@@ -11,7 +11,7 @@ import (
 )
 
 type NonConcurrentFSSCanner interface {
-	Scan(logger *slog.Logger, currentPath, currentID string, calculateFileHashes bool, maxRecursion, recursionCount int) (FSEntity, error)
+	Scan(logger *slog.Logger, currentPath, parentID, id string, calculateFileHashes bool, maxRecursion, recursionCount int) (FSEntity, error)
 }
 
 type nonConcurrentFSScanner struct {
@@ -21,7 +21,7 @@ func NewNonConcurrentFSScanner() NonConcurrentFSSCanner {
 	return &nonConcurrentFSScanner{}
 }
 
-func (ncs nonConcurrentFSScanner) Scan(logger *slog.Logger, currentPath, currentID string, calculateFileHashes bool, maxRecursion, recursionCount int) (FSEntity, error) {
+func (ncs nonConcurrentFSScanner) Scan(logger *slog.Logger, currentPath, parentID, id string, calculateFileHashes bool, maxRecursion, recursionCount int) (FSEntity, error) {
 	logger.Debug("attempting to list contents of provided path", slog.String("currentPath", currentPath), slog.Int("recursionCount", recursionCount))
 	if !filepath.IsAbs(currentPath) {
 		var err error
@@ -36,12 +36,10 @@ func (ncs nonConcurrentFSScanner) Scan(logger *slog.Logger, currentPath, current
 		logger.Error("failed to get stat on current path", slog.String("errorMessage", err.Error()))
 		return FSEntity{}, err
 	}
-	rootID := currentID
-	if len(rootID) == 0 {
-		logger.Debug("creating new id because one provided was blank")
-		rootID = uuid.New().String()
+	if len(id) == 0 {
+		id = uuid.New().String()
 	}
-	rootEntity := FileInfoToFSEntry(logger, currentStat, rootID, currentPath, calculateFileHashes)
+	rootEntity := FileInfoToFSEntry(logger, currentStat, parentID, id, currentPath, calculateFileHashes)
 	if recursionCount == 0 {
 		// TODO: This is a hack until I feel like working out the issue here. first run of this adds the name to the path again, so removing the last bit for first pass only...
 		rootEntity.FullPath = currentPath
@@ -70,13 +68,14 @@ func (ncs nonConcurrentFSScanner) Scan(logger *slog.Logger, currentPath, current
 			}
 			if isDir {
 				logger.Debug("child item is dir", slog.String("name", name))
-				dInfo := DirInfoToFSEntry(e, rootID, currentPath)
+				dInfo := DirInfoToFSEntry(e, parentID, id, currentPath)
 				if maxRecursion != -1 && maxRecursion > recursionCount {
 					logger.Debug("skipping call to get dir children info due to max recursion setting", slog.Int("maxRecursion", maxRecursion), slog.Int("recursionCount", recursionCount))
 				} else {
 					// populate children
 					newPath := path.Join(currentPath, dInfo.Name)
-					subDInfo, err := ncs.Scan(logger, newPath, dInfo.ID, calculateFileHashes, maxRecursion, recursionCount+1)
+					childID := uuid.New().String()
+					subDInfo, err := ncs.Scan(logger, newPath, dInfo.ID, childID, calculateFileHashes, maxRecursion, recursionCount+1)
 					if err != nil {
 						logger.Error("failed to get details for child directory", slog.String("path", newPath), slog.String("errorMessage", err.Error()))
 						return FSEntity{}, err
@@ -96,7 +95,8 @@ func (ncs nonConcurrentFSScanner) Scan(logger *slog.Logger, currentPath, current
 					logger.Error("failed to get stat on file", slog.Any("file", entry))
 					return FSEntity{}, err
 				}
-				fInfo := FileInfoToFSEntry(logger, fileStat, rootID, currentPath, calculateFileHashes)
+
+				fInfo := FileInfoToFSEntry(logger, fileStat, parentID, id, currentPath, calculateFileHashes)
 				dirContents = append(dirContents, fInfo)
 			} else {
 				logger.Debug("found non regular file / dir... skipping...", slog.Any("file", entry))

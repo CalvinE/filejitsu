@@ -37,5 +37,4 @@ type FSJob struct {
 	FullPath string
 	Info     fs.FileInfo
 	IsDir    bool
-	Children []FSJob
 }

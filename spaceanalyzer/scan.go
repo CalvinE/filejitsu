@@ -6,7 +6,6 @@ import (
 	"path"
 
 	"github.com/calvine/filejitsu/util"
-	"github.com/google/uuid"
 	"golang.org/x/exp/slog"
 )
 
@@ -37,8 +36,7 @@ func Scan(logger *slog.Logger, params ScanParams) (FSEntity, error) {
 	return info, nil
 }
 
-func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, ePath string, shouldCalculateFileHash bool) FSEntity {
-	id := uuid.New().String()
+func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, id, fullPath string, shouldCalculateFileHash bool) FSEntity {
 	name := fi.Name()
 	mode := fi.Mode()
 	eType := mode.Type()
@@ -48,12 +46,15 @@ func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, ePath stri
 	lastModified := fi.ModTime()
 	extension := ""
 	fileHash := ""
-	fullPath := path.Join(ePath, name)
 	if isRegular {
 		size = fi.Size()
 		extension = path.Ext(name)
 		if shouldCalculateFileHash {
-			fileHash = calculateFileHash(logger, fullPath, fileHash)
+			var err error
+			fileHash, err = calculateFileHash(logger, fullPath)
+			if err != nil {
+				logger.Warn("failed to calculate file hash", slog.Any("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+			}
 		}
 	}
 	permissions := fi.Mode().Perm()
@@ -77,7 +78,8 @@ func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, ePath stri
 	return e
 }
 
-func calculateFileHash(logger *slog.Logger, fullPath, fileHash string) string {
+func calculateFileHash(logger *slog.Logger, fullPath string) (string, error) {
+	var fileHash string
 	fd, err := os.Open(fullPath)
 	if err != nil {
 		logger.Warn("failed to calculate file hash", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
@@ -85,27 +87,28 @@ func calculateFileHash(logger *slog.Logger, fullPath, fileHash string) string {
 		fileHash, err = util.Sha512HashData(logger, fd)
 		if err != nil {
 			logger.Warn("failed to calculate file hash after open", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+			return fileHash, err
 		}
 	}
 	err = fd.Close()
 	if err != nil {
 		logger.Error("failed to close file", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+		return fileHash, err
 	}
-	return fileHash
+	return fileHash, nil
 }
 
-func DirInfoToFSEntry(di fs.DirEntry, parentID, ePath string) FSEntity {
+func DirInfoToFSEntry(di fs.DirEntry, parentID, id, fullPath string) FSEntity {
 	eType := di.Type()
 	permissions := eType.Perm()
 	name := di.Name()
-	fullPath := path.Join(ePath, name)
 	isDir := di.IsDir()
 	isRegular := eType.IsRegular()
 	entityType := getEntityType(isDir, isRegular)
 	e := FSEntity{
-		ID:          uuid.New().String(),
+		ID:          id,
 		ParentID:    parentID,
-		Name:        di.Name(),
+		Name:        name,
 		IsDir:       isDir,
 		EntityType:  entityType,
 		FullPath:    fullPath,
