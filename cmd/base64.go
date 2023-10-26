@@ -38,7 +38,6 @@ func base64CommandInit() {
 
 func base64Run(cmd *cobra.Command, args []string) error {
 	input := inputFile
-	defer util.AttemptToClose(commandLogger, input)
 	targetEncoding := getBase64Encoding(commandLogger, base64Args.UseURLEncoding, base64Args.OmitPadding)
 	output := outputFile
 	if base64Args.Decode {
