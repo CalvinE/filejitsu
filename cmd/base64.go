@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/base64"
 	"io"
-	"os"
 
 	"github.com/calvine/filejitsu/util"
 	"github.com/spf13/cobra"
@@ -12,8 +10,6 @@ import (
 )
 
 type Base64Args struct {
-	Input string `json:"input"`
-	//Output string `json:"output"`
 	Decode            bool `json:"decode"`
 	UseURLEncoding    bool `json:"useURLEncoding"`
 	OmitPadding       bool `json:"omitPadding"`
@@ -33,8 +29,6 @@ var base64Command = &cobra.Command{
 var base64Args = Base64Args{}
 
 func base64CommandInit() {
-	base64Command.PersistentFlags().StringVarP(&base64Args.Input, "input", "i", stdinName, "The input to base 64 encode.  Default is stdin.")
-	//base64Command.PersistentFlags().StringVarP(&base64Args.Input, "output", "o", stdoutName, "Where to output the base 64 encoded input..  Default is stdout.")
 	base64Command.PersistentFlags().BoolVarP(&base64Args.Decode, "decode", "d", false, "if provided the command will decode the input. By default this command encodes the input.")
 	base64Command.PersistentFlags().BoolVarP(&base64Args.UseURLEncoding, "useUrlEncoding", "u", false, "if provided the command will encode / decode using url encoding. By default this command encodes / decodes using std encoding.")
 	base64Command.PersistentFlags().BoolVarP(&base64Args.OmitPadding, "omitPadding", "n", false, "if provided the command will encode /decode the input with padding. By default this command encodes / decodes with padding.")
@@ -43,15 +37,10 @@ func base64CommandInit() {
 }
 
 func base64Run(cmd *cobra.Command, args []string) error {
-	var input io.Reader
-	if base64Args.Input == stdinName {
-		input = os.Stdin
-	} else {
-		input = bytes.NewBufferString(base64Args.Input)
-	}
+	input := inputFile
 	defer util.AttemptToClose(commandLogger, input)
 	targetEncoding := getBase64Encoding(commandLogger, base64Args.UseURLEncoding, base64Args.OmitPadding)
-	output := os.Stdout
+	output := outputFile
 	if base64Args.Decode {
 		// decode
 		err := base64Decode(commandLogger, targetEncoding, input, output)

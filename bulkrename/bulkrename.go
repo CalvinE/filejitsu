@@ -76,7 +76,7 @@ func CalculateJobs(ctx context.Context, logger *slog.Logger, params Params) ([]R
 		} else if params.Recursive {
 			// it is a dir and we may need to recurse
 			recursiveParams := params
-			recursiveParams.RootPath = path.Join(absPath, iName)
+			recursiveParams.RootPath = filepath.Join(absPath, iName)
 			logger.Info("directory found and recursion is activated. performing recursive dir scan",
 				slog.String("newRootPath", recursiveParams.RootPath),
 				slog.Int("recursionCount", recursionCount),
@@ -154,8 +154,8 @@ func calculateRename(logger *slog.Logger, original util.File, captureRegex *rege
 }
 
 func ProcessResult(logger *slog.Logger, result ResultEntry) error {
-	origPath := path.Join(result.Original.Path, result.Original.Name)
-	newPath := path.Join(result.New.Path, result.New.Name)
+	origPath := filepath.Join(result.Original.Path, result.Original.Name)
+	newPath := filepath.Join(result.New.Path, result.New.Name)
 	if err := os.Rename(origPath, newPath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			logger.Warn("file does not exist... could the file have already been renamed?",

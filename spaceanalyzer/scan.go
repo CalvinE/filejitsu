@@ -1,6 +1,7 @@
 package spaceanalyzer
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
@@ -24,15 +25,17 @@ func populateExtraSizeInfo(item *FSEntity) {
 
 func Scan(logger *slog.Logger, params ScanParams) (FSEntity, error) {
 	// ncs := NewNonConcurrentFSScanner()
-	cfs := NewConcurrentFSScanner()
+	// TODO: parameterize concurrency limit
+	cfs := NewConcurrentFSScanner(0)
 	info, err := cfs.Scan(logger, params.RootPath, "base", params.CalculateFileHashes, params.MaxRecursion)
+	logger.Info("finished scan")
 	if err != nil {
 		logger.Error("failed to get dir content details", slog.String("errorMessage", err.Error()), slog.String("rootPath", params.RootPath))
 		return FSEntity{}, err
 	}
-	logger.Debug("populating extra size info recursively")
+	logger.Info("populating extra size info")
 	populateExtraSizeInfo(&info)
-	logger.Debug("finished populating extra size info recursively")
+	logger.Info("finished populating extra size info")
 	return info, nil
 }
 
@@ -82,18 +85,19 @@ func calculateFileHash(logger *slog.Logger, fullPath string) (string, error) {
 	var fileHash string
 	fd, err := os.Open(fullPath)
 	if err != nil {
-		logger.Warn("failed to calculate file hash", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+		// logger.Warn("failed to open file for hashing", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+		return fileHash, fmt.Errorf("failed to open file for hashing: %w", err)
 	} else {
 		fileHash, err = util.Sha512HashData(logger, fd)
 		if err != nil {
-			logger.Warn("failed to calculate file hash after open", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
-			return fileHash, err
+			// logger.Warn("failed to calculate file hash after open", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+			return fileHash, fmt.Errorf("failed to calculate file hash after open: %w", err)
 		}
 	}
 	err = fd.Close()
 	if err != nil {
-		logger.Error("failed to close file", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
-		return fileHash, err
+		// logger.Error("failed to close file", slog.String("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+		return fileHash, fmt.Errorf("failed to close file: %w", err)
 	}
 	return fileHash, nil
 }

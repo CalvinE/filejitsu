@@ -11,6 +11,8 @@ const (
 	OpEncrypt Operation = iota + 1
 	// OpDecrypt indicates that decryption is the desired operation.
 	OpDecrypt
+	// OpPassThrough indicates that passthrough is the desired operation.
+	OpPassThrough
 )
 
 // Represents the parameters for the encrypt / decrypt command.

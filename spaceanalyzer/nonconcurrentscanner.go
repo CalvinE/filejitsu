@@ -3,7 +3,6 @@ package spaceanalyzer
 import (
 	"errors"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/google/uuid"
@@ -73,7 +72,7 @@ func (ncs nonConcurrentFSScanner) Scan(logger *slog.Logger, currentPath, parentI
 					logger.Debug("skipping call to get dir children info due to max recursion setting", slog.Int("maxRecursion", maxRecursion), slog.Int("recursionCount", recursionCount))
 				} else {
 					// populate children
-					newPath := path.Join(currentPath, dInfo.Name)
+					newPath := filepath.Join(currentPath, dInfo.Name)
 					childID := uuid.New().String()
 					subDInfo, err := ncs.Scan(logger, newPath, dInfo.ID, childID, calculateFileHashes, maxRecursion, recursionCount+1)
 					if err != nil {
