@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/base64"
 	"io"
 
@@ -10,10 +11,11 @@ import (
 )
 
 type Base64Args struct {
-	Decode            bool `json:"decode"`
-	UseURLEncoding    bool `json:"useURLEncoding"`
-	OmitPadding       bool `json:"omitPadding"`
-	OmitEndingNewLine bool `json:"omitEndingNewLine"`
+	InputText         string `json:"inputText"`
+	Decode            bool   `json:"decode"`
+	UseURLEncoding    bool   `json:"useURLEncoding"`
+	OmitPadding       bool   `json:"omitPadding"`
+	OmitEndingNewLine bool   `json:"omitEndingNewLine"`
 }
 
 const base64CommandName = "base64"
@@ -29,6 +31,7 @@ var base64Command = &cobra.Command{
 var base64Args = Base64Args{}
 
 func base64CommandInit() {
+	base64Command.PersistentFlags().StringVarP(&encryptDecryptArgs.InputText, "inputText", "t", "", "Text to pass in as input")
 	base64Command.PersistentFlags().BoolVarP(&base64Args.Decode, "decode", "d", false, "if provided the command will decode the input. By default this command encodes the input.")
 	base64Command.PersistentFlags().BoolVarP(&base64Args.UseURLEncoding, "useUrlEncoding", "u", false, "if provided the command will encode / decode using url encoding. By default this command encodes / decodes using std encoding.")
 	base64Command.PersistentFlags().BoolVarP(&base64Args.OmitPadding, "omitPadding", "n", false, "if provided the command will encode /decode the input with padding. By default this command encodes / decodes with padding.")
@@ -37,7 +40,15 @@ func base64CommandInit() {
 }
 
 func base64Run(cmd *cobra.Command, args []string) error {
-	input := inputFile
+	var input io.Reader
+	if len(encryptDecryptArgs.InputText) > 0 {
+		commandLogger.Info("using provided text instead of input file")
+		input = bytes.NewBufferString(encryptDecryptArgs.InputText)
+	} else {
+		commandLogger.Info("reading input from inputFile", slog.String("inputFilePath", inputPath))
+		input = inputFile
+	}
+	// TODO: Should we try all decoders if none are specified
 	targetEncoding := getBase64Encoding(commandLogger, base64Args.UseURLEncoding, base64Args.OmitPadding)
 	output := outputFile
 	if base64Args.Decode {
