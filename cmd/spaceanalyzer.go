@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"os"
 
 	"github.com/calvine/filejitsu/spaceanalyzer"
 	"github.com/calvine/filejitsu/util"
@@ -51,7 +50,7 @@ func spaceAnalyzerScanRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output := os.Stdout
+	output := outputFile
 	var bytesWritten int
 	// TODO: add a option to enable streaming JSON and if not present do normal ish.
 	streamingOutput := spaceAnalyzerArgs.OutputFormat == "sjson"
@@ -80,7 +79,6 @@ func spaceAnalyzerScanRun(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	// jsonStreamer.WriteObject(cmd.Context(), info, os.Stdout)
 	prettySize := util.GetPrettyBytesSize(int64(bytesWritten))
 	commandLogger.Info("finished writing output", slog.Int("bytesWritten", bytesWritten), slog.String("prettyBytesWritten", prettySize))
 	return nil
@@ -99,7 +97,7 @@ func WriteOutputAsStreamingJSON(ctx context.Context, rootInfo spaceanalyzer.FSEn
 		}
 		rootInfo.Children = nil
 	}
-	bw, err := streamingHandler.WriteObject(ctx, rootInfo, os.Stdout)
+	bw, err := streamingHandler.WriteObject(ctx, rootInfo, writer)
 	bytesWritten += bw
 	return bytesWritten, err
 }

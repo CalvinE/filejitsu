@@ -63,7 +63,6 @@ func CalculateJobs(ctx context.Context, logger *slog.Logger, params Params) ([]R
 				Extension: path.Ext(fName),
 				Path:      absPath, // may want to convert to absolute path?
 			}
-			// TODO: process file name to make new file name
 			result, err := calculateRename(logger, originalFile, params.TargetRegex, params.DestinationTemplate)
 			if err != nil {
 				logger.Error("failed to calculate rename for file",
