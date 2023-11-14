@@ -38,7 +38,7 @@ func (ncs nonConcurrentFSScanner) Scan(logger *slog.Logger, currentPath, parentI
 	if len(id) == 0 {
 		id = uuid.New().String()
 	}
-	rootEntity := FileInfoToFSEntry(logger, currentStat, parentID, id, currentPath, calculateFileHashes)
+	rootEntity := FileInfoToFSEntry(logger, currentStat, parentID, id, currentPath, calculateFileHashes, recursionCount)
 	if recursionCount == 0 {
 		// TODO: This is a hack until I feel like working out the issue here. first run of this adds the name to the path again, so removing the last bit for first pass only...
 		rootEntity.FullPath = currentPath
@@ -95,7 +95,7 @@ func (ncs nonConcurrentFSScanner) Scan(logger *slog.Logger, currentPath, parentI
 					return FSEntity{}, err
 				}
 
-				fInfo := FileInfoToFSEntry(logger, fileStat, parentID, id, currentPath, calculateFileHashes)
+				fInfo := FileInfoToFSEntry(logger, fileStat, parentID, id, currentPath, calculateFileHashes, recursionCount)
 				dirContents = append(dirContents, fInfo)
 			} else {
 				logger.Debug("found non regular file / dir... skipping...", slog.Any("file", entry))

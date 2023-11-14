@@ -19,7 +19,11 @@ const (
 	stdErrFileName = "stderr"
 )
 
+// TODO: move from global variables to a struct that could possibly be passed around...
 var (
+	buildHash string
+	buildDate string
+
 	logLevelString string
 	logOutputPath  string
 	logOutputFile  *os.File
@@ -37,21 +41,26 @@ var rootCmd = &cobra.Command{
 	Long:  "A CLI tool for File System tools",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		startTime = time.Now()
+		logOutputFile = os.Stderr
 		if logOutputPath != stdErrFileName {
-			f, err := os.OpenFile(logOutputPath, os.O_CREATE|os.O_WRONLY, 0644)
+			logFile, err := os.OpenFile(logOutputPath, os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {
 				return fmt.Errorf("failed to setup logging output file (%s): %w", logOutputPath, err)
 			}
-			logOutputFile = f
-		} else {
-			logOutputFile = os.Stderr
+			logOutputFile = logFile
 		}
 		logger := setUpLogger(logLevelString, logOutputFile)
 		runID := uuid.New().String()
 		commandName := getFullCommandName(cmd)
 		commandLogger = logger.With(slog.String("command", commandName), slog.String("runID", runID))
-		commandLogger.Debug("setting up log output", slog.String("logOutputPath", logOutputPath))
-		commandLogger.Debug("command pre run", slog.Time("startTime", startTime))
+		commandLogger.Info("starting filejitsu",
+			slog.Time("startTime", startTime),
+			slog.String("buildHash", buildHash),
+			slog.String("buildDate", buildDate),
+			slog.String("logOutputPath", logOutputPath),
+			slog.String("inputPath", inputPath),
+			slog.String("outputPath", outputPath),
+		)
 		commandLogger.Debug("setting up input", slog.String("inputPath", inputPath))
 		if inputPath != stdInFileName {
 			commandLogger.Info("inputFile set to something other than stdin", slog.String("inputPath", inputPath))
@@ -178,12 +187,13 @@ func setUpLogger(logLevelString string, logOutput *os.File) *slog.Logger {
 	return logger
 }
 
-func SetupCommand() {
+func SetupCommand(_buildHash, _buildDate string) {
+	buildHash = _buildHash
+	buildDate = _buildDate
 	rootCmd.PersistentFlags().StringVarP(&logLevelString, "logLevel", "l", "none", "The log level for the command. Supports error, warn, info, debug")
 	rootCmd.PersistentFlags().StringVar(&logOutputPath, "logOutput", stdErrFileName, "Where to write the logs from the command to. Default is stderr")
 	rootCmd.PersistentFlags().StringVarP(&inputPath, "input", "i", stdInFileName, "Where to read the input of the command (If there is any). Default is stdin")
 	rootCmd.PersistentFlags().StringVarP(&outputPath, "output", "o", stdOutFileName, "Where to write the output of the command. Default is stdout")
-	// TODO: add input parameter defaulted to stdin also?
 	bulkRenameInit()
 	encryptDecryptInit()
 	base64CommandInit()

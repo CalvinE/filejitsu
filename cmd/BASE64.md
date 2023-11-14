@@ -2,13 +2,25 @@
 
 This command will encode or decode base64 data and print it on `stdout`.
 
+## Input / Output usage
+
+The global `input` and `output` parameters are used in this command.
+
+`input` is the content to be acted on, defaults to `stdin`. `inputText` can be used in lieu of the `input` parameter if you want to pass a string in without using a pipe `|` or other terminal output redirection.
+
+`output` is where the output will go, defaults to `stdout`.
+
+## Parameters
+
+See global parameters for things like `input`, `output` or `logging` [here](./GLOBAL.md).
+
 | Full Name | Short Name | Required | Description | Default |
 |-----|-----|-----|-----|-----|
-|`--input`|`-i`|Y|The input to base64 encode / decode as a string. If not provided `stdin` is used|`stdin`|
-|`--decode`|`-d`|N|If provided the the command will attempt to base64 decode the input|`false`|
-|`--useUrlEncoding`|`-u`|N|If provided The URL safe base64 encoding will be used instead of standard base64 encoding|`false`|
-|`--omitPadding`|`-n`|N|If provided the base64 encoding / decoding will not either add padding (encoding) or parse padding (decoding).|`false`|
-|`--omitEndingNewLine`|`-e`|N|If provided no new line character will be added to the base64 encoded / decoded output.|`false`|
+| `--decode` | `-d` | N | If provided the the command will attempt to base64 decode the input | `false` |
+| `--inputText` | `-t` | N | Text to be used for the base64 encode / decode. If not provided the global `input` parameter is used. | NONE |
+| `--useUrlEncoding` | `-u` | N | If provided The URL safe base64 encoding will be used instead of standard base64 encoding | `false` |
+| `--omitPadding` | `-n` | N | If provided the base64 encoding / decoding will not either add padding (encoding) or parse padding (decoding). | `false` |
+| `--omitEndingNewLine` | `-e` | N | If provided no new line character will be added to the base64 encoded / decoded output. | `false` |
 
 ## Examples
 

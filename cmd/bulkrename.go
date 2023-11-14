@@ -31,7 +31,7 @@ var bulkRenameCommand = &cobra.Command{
 	Use:     bulkRenameCommandName,
 	Aliases: []string{"bkrn"},
 	Short:   "rename files in bulk",
-	Long:    "rename files in bulk based on regex named capture groups",
+	Long:    "rename files in bulk based on regex named capture groups\n\nThis command does not use the global input and output parameters",
 	RunE:    bulkRenameRun,
 }
 

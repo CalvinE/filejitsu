@@ -2,7 +2,13 @@
 
 This command renames files based on the parameters provided.
 
+## Input / Output usage
+
+The global `input` and `output` parameters are not used for this command.
+
 ## Parameters
+
+See global parameters for things like `input`, `output` or `logging` [here](./GLOBAL.md).
 
 | Full Name | Short Name | Required | Description | Default |
 |-----|-----|-----|-----|-----|

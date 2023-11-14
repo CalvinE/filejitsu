@@ -39,7 +39,7 @@ func Scan(logger *slog.Logger, params ScanParams) (FSEntity, error) {
 	return info, nil
 }
 
-func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, id, fullPath string, shouldCalculateFileHash bool) FSEntity {
+func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, id, fullPath string, shouldCalculateFileHash bool, depth int) FSEntity {
 	name := fi.Name()
 	mode := fi.Mode()
 	eType := mode.Type()
@@ -77,6 +77,7 @@ func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, id, fullPa
 		LastModified: lastModified,
 		ParentID:     parentID,
 		ID:           id,
+		Depth:        depth,
 	}
 	return e
 }

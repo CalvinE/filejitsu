@@ -17,6 +17,7 @@ func GetPrettyBytesSize(sizeInBytes int64) string {
 	var divSize float64
 	var unit string
 	var unitSize float64
+	formatString := "%.2f %s"
 	if sizeInBytesFloat >= EB {
 		unitSize = EB
 		unit = "EB"
@@ -36,10 +37,11 @@ func GetPrettyBytesSize(sizeInBytes int64) string {
 		unitSize = KB
 		unit = "KB"
 	} else {
+		formatString = "%.0f %s"
 		unitSize = B
 		unit = "B"
 	}
 	divSize = sizeInBytesFloat / unitSize
-	prettySize := fmt.Sprintf("%.2f %s", divSize, unit)
+	prettySize := fmt.Sprintf(formatString, divSize, unit)
 	return prettySize
 }

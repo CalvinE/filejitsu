@@ -89,13 +89,15 @@ func (cfs *concurrentFSScanner) Scan(logger *slog.Logger, entityPath, rootID str
 					)
 				}
 				if j.IsDir {
-					dir := FileInfoToFSEntry(logger, j.Info, j.ParentID, j.ID, j.FullPath, shouldCalculateFileHashes)
+					dir := FileInfoToFSEntry(logger, j.Info, j.ParentID, j.ID, j.FullPath, shouldCalculateFileHashes, j.Depth)
+					dir.Depth = j.Depth
 					logger.Debug("received dir job", slog.Any("dirEntity", dir))
 					mutex.Lock()
 					dirs[dir.ParentID] = append(dirs[dir.ParentID], dir)
 					mutex.Unlock()
 				} else {
-					file := FileInfoToFSEntry(logger, j.Info, j.ParentID, j.ID, j.FullPath, shouldCalculateFileHashes)
+					file := FileInfoToFSEntry(logger, j.Info, j.ParentID, j.ID, j.FullPath, shouldCalculateFileHashes, j.Depth)
+					file.Depth = j.Depth
 					mutex.Lock()
 					files[j.ParentID] = append(files[j.ParentID], file)
 					mutex.Unlock()
@@ -184,6 +186,7 @@ func recursiveEnumerateScanTargets(logger *slog.Logger, jobsChan chan<- FSJob, e
 	job.ParentID = parentID
 	job.Info = currentStat
 	job.FullPath = currentPath
+	job.Depth = recursionCount
 	logger = logger.With("id", id)
 	if currentStat.IsDir() {
 		job.IsDir = true

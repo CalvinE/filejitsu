@@ -24,6 +24,7 @@ type FSEntity struct {
 	PrettySize   string     `json:"prettySize"`
 	FileHash     string     `json:"fileHash,omitempty"`
 	IsDir        bool       `json:"isDir"` // TODO: remove and have client calculate based on entityType?
+	Depth        int        `json:"depth"`
 	EntityType   EntityType `json:"entityType"`
 	Mode         uint32     `json:"mode,omitempty"`
 	Type         uint32     `json:"type"`
@@ -38,6 +39,7 @@ type FSJob struct {
 	FullPath   string
 	Info       fs.FileInfo
 	IsDir      bool
+	Depth      int
 	FailedScan bool
 	Error      error
 }
