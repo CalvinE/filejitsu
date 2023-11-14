@@ -1,10 +1,17 @@
 # Filejitsu
 
+## Note
+
+Not all commands use the global parameters. Specifically `input` and `output`. The context of the command will indicate if these are used. Also the documentation for each command SHOULD indicate if either of these are used.
+
 ## Global Flags
 
 | Full Name | Short Name | Required | Description | Default |
 |-----|-----|-----|-----|-----|
-| `--logLevel` | `-l` | N | The log level for the command being run. Default is to not log. Logs are emitted to `stderr`. Valid values are `error`, `warn`, `info`, `debug` and `none` | `none` |
+| `--input` | `-i` | N | Some commands can receive input from outside sources. Files or `stdin`. This parameter sets the source of the input | `stdin` |
+| `--logLevel` | `-l` | The log level to use for the command. `none` means no logs. Other levels are `debug`, `info`, `warn`, `error` | `none` |
+| `--logOutput` | NA | The destinations where the logs will be written. A file or something like `stderr` | `stderr` |
+| `--output` | `-o` | The destination for the output of the command. A file or something like `stdout` | `stdout` |
 
 ## Commands
 

@@ -12,7 +12,7 @@ The global `input` and `output` parameters are used in this command.
 
 ## Parameters
 
-See global parameters for things like `input`, `output` or `logging` [here](./GLOBAL.md).
+See global parameters for things like `input`, `output` or `logging` [here](../README.md).
 
 | Full Name | Short Name | Required | Description | Default |
 |-----|-----|-----|-----|-----|
