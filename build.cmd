@@ -5,6 +5,6 @@ for /f %%i in ('git rev-parse --short HEAD') do set BUIDHASH=%%i
 
 echo "building filejitsu version: Hash=%BUIDHASH% Time=%BUILDDATE%"
 
-go build -ldflags="-X main.commitHash=%BUIDHASH% -X main.buildTime=%BUILDDATE%" -o "filejitsu" .
+go build -ldflags="-X main.commitHash=%BUIDHASH% -X main.buildDate=%BUILDDATE%" -o "filejitsu.exe" .
 
 echo "finished"
