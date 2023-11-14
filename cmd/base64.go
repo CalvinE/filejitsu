@@ -49,8 +49,8 @@ var (
 
 const (
 	base64CommandName       = "base64"
-	base64EncodeCommandName = "base64encode"
-	base64DecodeCommandName = "base64decode"
+	base64EncodeCommandName = "encode"
+	base64DecodeCommandName = "decode"
 )
 
 var base64Command = &cobra.Command{
@@ -63,7 +63,7 @@ var base64Command = &cobra.Command{
 
 var base64EncodeCommand = &cobra.Command{
 	Use:     base64EncodeCommandName,
-	Aliases: []string{"b64e"},
+	Aliases: []string{"e"},
 	Short:   "Base 64 encode input",
 	Long:    "Base 64 encode input",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -74,7 +74,7 @@ var base64EncodeCommand = &cobra.Command{
 
 var base64DecodeCommand = &cobra.Command{
 	Use:     base64DecodeCommandName,
-	Aliases: []string{"b64d"},
+	Aliases: []string{"d"},
 	Short:   "Base 64 decode input",
 	Long:    "A simplified version of b64 -d. This command will try all encodings and succeed if any are successful",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -97,10 +97,10 @@ func base64CommandInit() {
 	base64EncodeCommand.PersistentFlags().BoolVarP(&base64Args.UseURLEncoding, "useUrlEncoding", "u", false, "if provided the command will encode / decode using url encoding. By default this command encodes / decodes using std encoding.")
 	base64EncodeCommand.PersistentFlags().BoolVarP(&base64Args.OmitPadding, "omitPadding", "n", false, "if provided the command will encode /decode the input with padding. By default this command encodes / decodes with padding.")
 	base64EncodeCommand.PersistentFlags().BoolVarP(&base64Args.OmitEndingNewLine, "omitEndingNewLine", "e", false, "if provided the command omit the newline at the end of the output.")
-	rootCmd.AddCommand(base64EncodeCommand)
+	base64Command.AddCommand(base64EncodeCommand)
 	base64DecodeCommand.PersistentFlags().StringVarP(&base64Args.InputText, "inputText", "t", "", "Text to pass in as input")
 	base64DecodeCommand.PersistentFlags().BoolVarP(&base64Args.OmitEndingNewLine, "omitEndingNewLine", "e", false, "if provided the command omit the newline at the end of the output.")
-	rootCmd.AddCommand(base64DecodeCommand)
+	base64Command.AddCommand(base64DecodeCommand)
 }
 
 func base64Run(cmd *cobra.Command, args []string) error {
