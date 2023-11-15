@@ -47,6 +47,7 @@ func bulkRenameInit() {
 }
 
 func bulkRenameRun(cmd *cobra.Command, args []string) error {
+	commandLogger.Debug("args provided", slog.Any("args", bkrnArgs))
 	params, err := validateBulkrenameArgs(cmd.Context(), bkrnArgs)
 	if err != nil {
 		commandLogger.Error("failed to validate command arguments",
@@ -111,10 +112,6 @@ func validateBulkrenameArgs(ctx context.Context, args BulkRenameArgs) (bulkrenam
 	targetRegex, err := regexp.Compile(args.TargetRegexString)
 	if err != nil {
 		return params, fmt.Errorf("target regex failed to compile: %v", err)
-	}
-	targetCaptureGroupNames := targetRegex.SubexpNames()
-	if len(targetCaptureGroupNames) <= 1 {
-		return params, errors.New("no named capture groups found in target regex")
 	}
 	params.TargetRegex = targetRegex
 	// validate destination template

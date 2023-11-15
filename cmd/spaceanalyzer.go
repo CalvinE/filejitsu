@@ -42,6 +42,7 @@ func spaceAnalyzerInit() {
 }
 
 func spaceAnalyzerScanRun(cmd *cobra.Command, args []string) error {
+	commandLogger.Debug("args provided", slog.Any("args", spaceAnalyzerArgs))
 	info, err := spaceanalyzer.Scan(commandLogger, spaceanalyzer.ScanParams{
 		RootPath:            spaceAnalyzerArgs.RootPath,
 		MaxRecursion:        spaceAnalyzerArgs.MaxRecursion,

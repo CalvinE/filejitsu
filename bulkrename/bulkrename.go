@@ -110,6 +110,7 @@ func calculateRename(logger *slog.Logger, original util.File, captureRegex *rege
 	}
 	numRegexSubExpressions := captureRegex.NumSubexp()
 	if numSubMatches != numRegexSubExpressions+1 {
+		// TODO: make sure this check makes sense...
 		err := errors.New("number of regex sub expressions not match sub matches + 1")
 		logger.Error(err.Error(),
 			slog.Int("numRegexSubExpressions", numRegexSubExpressions),
