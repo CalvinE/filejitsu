@@ -11,8 +11,9 @@ import (
 	"regexp"
 	"text/template"
 
+	"log/slog"
+
 	"github.com/calvine/filejitsu/util"
-	"golang.org/x/exp/slog"
 )
 
 func CalculateJobs(ctx context.Context, logger *slog.Logger, params Params) ([]ResultEntry, error) {

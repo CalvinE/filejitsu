@@ -6,8 +6,9 @@ import (
 	"os"
 	"path"
 
+	"log/slog"
+
 	"github.com/calvine/filejitsu/util"
-	"golang.org/x/exp/slog"
 )
 
 func populateExtraSizeInfo(item *FSEntity) {

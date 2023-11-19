@@ -8,9 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"log/slog"
+
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slog"
 )
 
 const (

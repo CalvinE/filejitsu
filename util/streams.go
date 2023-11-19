@@ -3,7 +3,7 @@ package util
 import (
 	"io"
 
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 // ProcessStreams writes data from an io.Reader to and io.Writer

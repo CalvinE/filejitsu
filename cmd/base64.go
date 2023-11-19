@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"io"
 
+	"log/slog"
+
 	"github.com/calvine/filejitsu/util"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slog"
 )
 
 type base64EncodingStrategy struct {

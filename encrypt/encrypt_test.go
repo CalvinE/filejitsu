@@ -6,8 +6,9 @@ import (
 	"os"
 	"testing"
 
+	"log/slog"
+
 	"golang.org/x/exp/slices"
-	"golang.org/x/exp/slog"
 )
 
 func TestEncryptDecrypt(t *testing.T) {

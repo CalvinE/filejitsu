@@ -6,8 +6,9 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"log/slog"
+
 	"github.com/calvine/filejitsu/util"
-	"golang.org/x/exp/slog"
 )
 
 func Decrypt(logger *slog.Logger, params Params) error {

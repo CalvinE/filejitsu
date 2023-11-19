@@ -8,8 +8,9 @@ import (
 	"fmt"
 	"io"
 
+	"log/slog"
+
 	"github.com/calvine/filejitsu/util"
-	"golang.org/x/exp/slog"
 )
 
 func Encrypt(logger *slog.Logger, params Params) error {

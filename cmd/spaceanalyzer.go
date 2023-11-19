@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"io"
 
+	"log/slog"
+
 	"github.com/calvine/filejitsu/spaceanalyzer"
 	"github.com/calvine/filejitsu/util"
 	"github.com/calvine/filejitsu/util/streamingjson"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slog"
 )
 
 type SpaceAnalyzerArgs struct {

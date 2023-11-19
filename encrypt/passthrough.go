@@ -1,8 +1,9 @@
 package encrypt
 
 import (
+	"log/slog"
+
 	"github.com/calvine/filejitsu/util"
-	"golang.org/x/exp/slog"
 )
 
 func Passthrough(logger *slog.Logger, params Params) error {

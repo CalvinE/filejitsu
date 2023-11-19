@@ -7,10 +7,11 @@ import (
 	"regexp"
 	"text/template"
 
+	"log/slog"
+
 	"github.com/calvine/filejitsu/bulkrename"
 	"github.com/calvine/filejitsu/util"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slog"
 )
 
 // TODO: add flag to save job to a file and also resume job from a file

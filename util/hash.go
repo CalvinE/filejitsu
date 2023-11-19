@@ -6,7 +6,7 @@ import (
 	"hash"
 	"io"
 
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 func Sha512HashData(logger *slog.Logger, data io.Reader) (string, error) {

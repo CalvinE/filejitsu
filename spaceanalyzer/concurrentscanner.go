@@ -8,8 +8,9 @@ import (
 	"runtime"
 	"sync"
 
+	"log/slog"
+
 	"github.com/google/uuid"
-	"golang.org/x/exp/slog"
 )
 
 const (

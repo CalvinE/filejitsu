@@ -5,8 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"log/slog"
+
 	"github.com/google/uuid"
-	"golang.org/x/exp/slog"
 )
 
 type NonConcurrentFSSCanner interface {

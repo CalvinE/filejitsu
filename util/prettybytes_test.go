@@ -1,9 +1,14 @@
 package util
 
-import "testing"
+import (
+	"runtime"
+	"testing"
+)
 
 func TestGetPrettyBytesSize(t *testing.T) {
-	x := int64(279370246)
+	x := int64(1023624856) // int64(279370246)
 	val := GetPrettyBytesSize(x)
-	t.Log(val)
+	// TODO: Clean up
+	numCPUs := runtime.NumCPU()
+	t.Log(val, numCPUs)
 }
