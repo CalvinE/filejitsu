@@ -23,23 +23,26 @@ type SpaceAnalyzerArgs struct {
 
 const spaceAnalyzerCommandName = "space-analyzer"
 
-var spaceAnalyzerCommand = &cobra.Command{
-	Use:     spaceAnalyzerCommandName,
-	Aliases: []string{"sa"},
-	Short:   "Analyze storage usage in a given directory",
-	Long:    "Analyze storage usage in a given directory. Outputs a JSON object with data on all of the content.",
-	RunE:    spaceAnalyzerScanRun,
+func newSpaceAnalyzerCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:     spaceAnalyzerCommandName,
+		Aliases: []string{"sa"},
+		Short:   "Analyze storage usage in a given directory",
+		Long:    "Analyze storage usage in a given directory. Outputs a JSON object with data on all of the content.",
+		RunE:    spaceAnalyzerScanRun,
+	}
 }
 
 var spaceAnalyzerArgs = SpaceAnalyzerArgs{}
 
-func spaceAnalyzerInit() {
+func spaceAnalyzerInit(parentCmd *cobra.Command) {
+	spaceAnalyzerCommand := newSpaceAnalyzerCommand()
 	spaceAnalyzerCommand.PersistentFlags().StringVarP(&spaceAnalyzerArgs.RootPath, "rootPath", "p", ".", "The root path to analyze. Default is current directory.")
 	spaceAnalyzerCommand.PersistentFlags().IntVarP(&spaceAnalyzerArgs.MaxRecursion, "maxRecursion", "m", -1, "Max number of recursive calls allowed. -1 means no limit")
 	spaceAnalyzerCommand.PersistentFlags().BoolVarP(&spaceAnalyzerArgs.CalculateFileHashes, "calculateFileHashes", "c", false, "If present file hashes will be calculated on files")
 	spaceAnalyzerCommand.PersistentFlags().StringVarP(&spaceAnalyzerArgs.OutputFormat, "outputFormat", "f", "json", "Output format for scan data. Options are 'json' or 'sjson' for streaming json")
 	// spaceAnalyzerCommand.PersistentFlags().BoolVarP(&spaceAnalyzerArgs.ExistingAnalysisFile, "existingAnalyzerFile", "e", "", "An existing analysis file from a previous")
-	rootCmd.AddCommand(spaceAnalyzerCommand)
+	parentCmd.AddCommand(spaceAnalyzerCommand)
 }
 
 func spaceAnalyzerScanRun(cmd *cobra.Command, args []string) error {
@@ -73,7 +76,7 @@ func spaceAnalyzerScanRun(cmd *cobra.Command, args []string) error {
 			commandLogger.Error("failed to marshal data to JSON", slog.String("errorMessage", err.Error()))
 			return err
 		}
-		bw, err := output.WriteString(string(infoString))
+		bw, err := output.Write(infoString)
 		bytesWritten += bw
 		if err != nil {
 			prettySize := util.GetPrettyBytesSize(int64(bytesWritten))

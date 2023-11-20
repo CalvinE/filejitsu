@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -16,44 +15,48 @@ import (
 var encryptDecryptArgs = EncryptDecryptArgs{}
 
 const (
-	stdinName              = "_stdin"
-	stdoutName             = "_stdout"
 	encryptCommandName     = "encrypt"
 	decryptCommandName     = "decrypt"
 	passthroughCommandName = "passthrough"
 )
 
-var encryptCommand = &cobra.Command{
-	Use:     encryptCommandName,
-	Aliases: []string{"encr"},
-	Short:   "encrypt data provided",
-	Long:    "encrypt data provided using AES-256",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		encryptDecryptArgs.Operation = encrypt.OpEncrypt
-		return encryptDecryptRun(cmd, args)
-	},
+func newEncryptCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:     encryptCommandName,
+		Aliases: []string{"encr"},
+		Short:   "encrypt data provided",
+		Long:    "encrypt data provided using AES-256",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			encryptDecryptArgs.Operation = encrypt.OpEncrypt
+			return encryptDecryptRun(cmd, args)
+		},
+	}
 }
 
-var decryptCommand = &cobra.Command{
-	Use:     decryptCommandName,
-	Aliases: []string{"dcry"},
-	Short:   "decrypt data provided",
-	Long:    "decrypt data provided using AES-256",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		encryptDecryptArgs.Operation = encrypt.OpDecrypt
-		return encryptDecryptRun(cmd, args)
-	},
+func newDecryptCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:     decryptCommandName,
+		Aliases: []string{"dcry"},
+		Short:   "decrypt data provided",
+		Long:    "decrypt data provided using AES-256",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			encryptDecryptArgs.Operation = encrypt.OpDecrypt
+			return encryptDecryptRun(cmd, args)
+		},
+	}
 }
 
-var passThroughCommand = &cobra.Command{
-	Use:     passthroughCommandName,
-	Aliases: []string{"pass"},
-	Short:   "decrypt data provided",
-	Long:    "decrypt data provided using AES-256",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		encryptDecryptArgs.Operation = encrypt.OpPassThrough
-		return encryptDecryptRun(cmd, args)
-	},
+func newPassthroughCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:     passthroughCommandName,
+		Aliases: []string{"pass"},
+		Short:   "decrypt data provided",
+		Long:    "decrypt data provided using AES-256",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			encryptDecryptArgs.Operation = encrypt.OpPassThrough
+			return encryptDecryptRun(cmd, args)
+		},
+	}
 }
 
 type EncryptDecryptArgs struct {
@@ -70,13 +73,14 @@ func validateEncryptArgs(ctx context.Context, args EncryptDecryptArgs) (encrypt.
 		return params, err
 	}
 
-	if len(encryptDecryptArgs.InputText) > 0 {
-		commandLogger.Info("using provided text instead of input file")
-		params.Input = bytes.NewBufferString(encryptDecryptArgs.InputText)
-	} else {
-		commandLogger.Info("reading input from inputFile", slog.String("inputFilePath", inputPath))
-		params.Input = inputFile
-	}
+	params.Input = getInputReader(commandLogger, inputFile, args.InputText)
+	// if len(encryptDecryptArgs.InputText) > 0 {
+	// 	commandLogger.Info("using provided text instead of input file")
+	// 	params.Input = bytes.NewBufferString(encryptDecryptArgs.InputText)
+	// } else {
+	// 	commandLogger.Info("reading input from inputFile", slog.String("inputFilePath", inputPath))
+	// 	params.Input = inputFile
+	// }
 	params.Output = outputFile
 
 	if len(args.Passphrase) > 0 {
@@ -91,19 +95,22 @@ func validateEncryptArgs(ctx context.Context, args EncryptDecryptArgs) (encrypt.
 	return params, nil
 }
 
-func encryptDecryptInit() {
+func encryptDecryptInit(parentCmd *cobra.Command) {
+	encryptCommand := newEncryptCommand()
 	encryptCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.InputText, "inputText", "t", "", "Text to pass in as input")
 	encryptCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.Passphrase, "passphrase", "p", "", "The passphrase used to encrypt the data.")
 	encryptCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.PassphraseFile, "passphraseFile", "f", "", "The file which will be read to get the passphrase used for encryption")
-	rootCmd.AddCommand(encryptCommand)
+	parentCmd.AddCommand(encryptCommand)
+	decryptCommand := newDecryptCommand()
 	decryptCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.InputText, "inputText", "t", "", "Text to pass in as input")
 	decryptCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.Passphrase, "passphrase", "p", "", "The passphrase used to encrypt the data.")
 	decryptCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.PassphraseFile, "passphraseFile", "f", "", "The file which will be read to get the passphrase used for encryption")
-	rootCmd.AddCommand(decryptCommand)
+	parentCmd.AddCommand(decryptCommand)
+	passThroughCommand := newPassthroughCommand()
 	passThroughCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.InputText, "inputText", "t", "", "Text to pass in as input")
 	passThroughCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.Passphrase, "passphrase", "p", "", "The passphrase used to encrypt the data.")
 	passThroughCommand.PersistentFlags().StringVarP(&encryptDecryptArgs.PassphraseFile, "passphraseFile", "f", "", "The file which will be read to get the passphrase used for encryption")
-	rootCmd.AddCommand(passThroughCommand)
+	parentCmd.AddCommand(passThroughCommand)
 }
 
 func encryptDecryptRun(cmd *cobra.Command, args []string) error {

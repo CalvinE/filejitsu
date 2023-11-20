@@ -28,23 +28,26 @@ type bkrnProcessingFunction func(*slog.Logger, bulkrename.ResultEntry) error
 
 const bulkRenameCommandName = "bulk-rename"
 
-var bulkRenameCommand = &cobra.Command{
-	Use:     bulkRenameCommandName,
-	Aliases: []string{"bkrn"},
-	Short:   "rename files in bulk",
-	Long:    "rename files in bulk based on regex named capture groups\n\nThis command does not use the global input and output parameters",
-	RunE:    bulkRenameRun,
+func newBulkRenameCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:     bulkRenameCommandName,
+		Aliases: []string{"bkrn"},
+		Short:   "rename files in bulk",
+		Long:    "rename files in bulk based on regex named capture groups\n\nThis command does not use the global input and output parameters",
+		RunE:    bulkRenameRun,
+	}
 }
 
 var bkrnArgs = BulkRenameArgs{}
 
-func bulkRenameInit() {
+func bulkRenameInit(parentCmd *cobra.Command) {
+	bulkRenameCommand := newBulkRenameCommand()
 	bulkRenameCommand.PersistentFlags().StringVarP(&bkrnArgs.RootPath, "rootPath", "p", "", "The root path to perform the bulk rename in")
 	bulkRenameCommand.PersistentFlags().StringVarP(&bkrnArgs.TargetRegexString, "targetRegex", "r", "", "The target regex to use for renaming with named capture groups present in the destination regex")
 	bulkRenameCommand.PersistentFlags().StringVarP(&bkrnArgs.DestinationTemplateString, "destinationTemplate", "d", "", "The destination template to use for renaming with named capture groups present in the target regex")
 	bulkRenameCommand.PersistentFlags().BoolVarP(&bkrnArgs.Recursive, "recursive", "s", false, "If present the bulk rename will work recursively")
 	bulkRenameCommand.PersistentFlags().BoolVarP(&bkrnArgs.IsTest, "test", "t", false, "If present rename will not happen, but the rename mapping will be put out to stdout")
-	rootCmd.AddCommand(bulkRenameCommand)
+	parentCmd.AddCommand(bulkRenameCommand)
 }
 
 func bulkRenameRun(cmd *cobra.Command, args []string) error {

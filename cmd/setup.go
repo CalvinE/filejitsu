@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -13,6 +15,45 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
+
+type readerCloserFunc func(logger *slog.Logger, r io.Reader, name, path string) error
+type writerCloserFunc func(logger *slog.Logger, w io.Writer, name, path string) error
+
+func noopCloseReader(logger *slog.Logger, r io.Reader, name, path string) error {
+	return nil
+}
+
+func closeReader(logger *slog.Logger, r io.Reader, name, path string) error {
+	c, ok := r.(io.Closer)
+	if ok {
+		closeOutputErr := c.Close()
+		if closeOutputErr != nil {
+			errMsg := fmt.Sprintf("failed to close %s file", name)
+			commandLogger.Error(errMsg, slog.String("path", path), slog.String("errorMessage", closeOutputErr.Error()))
+			closeOutputErr = fmt.Errorf("%s: %w", errMsg, closeOutputErr)
+			return closeOutputErr
+		}
+	}
+	return nil
+}
+
+func noopCloseWriter(logger *slog.Logger, w io.Writer, name, path string) error {
+	return nil
+}
+
+func closeWriter(logger *slog.Logger, w io.Writer, name, path string) error {
+	c, ok := w.(io.Closer)
+	if ok {
+		closeOutputErr := c.Close()
+		if closeOutputErr != nil {
+			errMsg := fmt.Sprintf("failed to close %s file", name)
+			commandLogger.Error(errMsg, slog.String("path", path), slog.String("errorMessage", closeOutputErr.Error()))
+			closeOutputErr = fmt.Errorf("%s: %w", errMsg, closeOutputErr)
+			return closeOutputErr
+		}
+	}
+	return nil
+}
 
 const (
 	stdInFileName  = "stdin"
@@ -27,122 +68,128 @@ var (
 
 	logLevelString string
 	logOutputPath  string
-	logOutputFile  *os.File
-	commandLogger  *slog.Logger
-	inputPath      string
-	inputFile      *os.File
-	outputPath     string
-	outputFile     *os.File
-	startTime      time.Time
+	//TODO: take this out of global scope
+	logOutputFile io.Writer
+	commandLogger *slog.Logger
+	inputPath     string
+	//TODO: take this out of global scope
+	inputFile  io.Reader
+	outputPath string
+	//TODO: take this out of global scope
+	outputFile io.Writer // *os.File
+	startTime  time.Time
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "filejitsu",
-	Short: "A CLI tool for File System tools",
-	Long:  "A CLI tool for File System tools",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		startTime = time.Now()
-		logOutputFile = os.Stderr
-		if logOutputPath != stdErrFileName {
-			logFile, err := os.OpenFile(logOutputPath, os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				return fmt.Errorf("failed to setup logging output file (%s): %w", logOutputPath, err)
+func NewRootCMD() *cobra.Command {
+	var logFileCloser writerCloserFunc
+	var inputFileCloser readerCloserFunc
+	var outputFileCloser writerCloserFunc
+	return &cobra.Command{
+		Use:   "filejitsu",
+		Short: "A CLI tool for File System tools",
+		Long:  "A CLI tool for File System tools",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			startTime = time.Now()
+			logOutputFile = os.Stderr
+			logFileCloser = noopCloseWriter
+			if logOutputPath != stdErrFileName {
+				logFile, err := os.OpenFile(logOutputPath, os.O_CREATE|os.O_WRONLY, 0644)
+				if err != nil {
+					return fmt.Errorf("failed to setup logging output file (%s): %w", logOutputPath, err)
+				}
+				logOutputFile = logFile
+				logFileCloser = closeWriter
 			}
-			logOutputFile = logFile
-		}
-		logger := setUpLogger(logLevelString, logOutputFile)
-		runID := uuid.New().String()
-		commandName := getFullCommandName(cmd)
-		commandLogger = logger.With(slog.String("command", commandName), slog.String("runID", runID))
-		commandLogger.Info("starting filejitsu",
-			slog.Time("startTime", startTime),
-			slog.String("buildHash", buildHash),
-			slog.String("buildDate", buildDate),
-			slog.String("logOutputPath", logOutputPath),
-			slog.String("inputPath", inputPath),
-			slog.String("outputPath", outputPath),
-		)
-		commandLogger.Debug("setting up input", slog.String("inputPath", inputPath))
-		if inputPath != stdInFileName {
-			commandLogger.Info("inputFile set to something other than stdin", slog.String("inputPath", inputPath))
-			f, err := os.OpenFile(inputPath, os.O_RDONLY, 0644)
-			if err != nil {
-				commandLogger.Error("failed to open input file", slog.String("inputPath", inputPath), slog.String("errorMessage", err.Error()))
-				return err
+			logger := setUpLogger(logLevelString, logOutputFile)
+			runID := uuid.New().String()
+			commandName := getFullCommandName(cmd)
+			commandLogger = logger.With(slog.String("command", commandName), slog.String("runID", runID))
+			commandLogger.Info("starting filejitsu",
+				slog.Time("startTime", startTime),
+				slog.String("buildHash", buildHash),
+				slog.String("buildDate", buildDate),
+				slog.String("logOutputPath", logOutputPath),
+				slog.String("inputPath", inputPath),
+				slog.String("outputPath", outputPath),
+			)
+			commandLogger.Debug("setting up input", slog.String("inputPath", inputPath))
+			inputFileCloser = noopCloseReader
+			if inputPath != stdInFileName {
+				commandLogger.Info("inputFile set to something other than stdin", slog.String("inputPath", inputPath))
+				f, err := os.OpenFile(inputPath, os.O_RDONLY, 0644)
+				if err != nil {
+					commandLogger.Error("failed to open input file", slog.String("inputPath", inputPath), slog.String("errorMessage", err.Error()))
+					return err
+				}
+				inputFile = f
+				inputFileCloser = closeReader
+			} else {
+				commandLogger.Debug("using stdin as input")
+				inputFile = cmd.InOrStdin() // os.Stdin
 			}
-			inputFile = f
-		} else {
-			commandLogger.Debug("using stdin as input")
-			inputFile = os.Stdin
-		}
 
-		commandLogger.Debug("setting up output", slog.String("outputPath", outputPath))
-		if outputPath != stdOutFileName {
-			commandLogger.Info("outputFile set to something other than stdout", slog.String("outputPath", outputPath))
-			f, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				commandLogger.Error("failed to open output file", slog.String("outputPath", outputPath), slog.String("errorMessage", err.Error()))
-				return err
+			commandLogger.Debug("setting up output", slog.String("outputPath", outputPath))
+			outputFileCloser = noopCloseWriter
+			if outputPath != stdOutFileName {
+				commandLogger.Info("outputFile set to something other than stdout", slog.String("outputPath", outputPath))
+				f, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY, 0644)
+				if err != nil {
+					commandLogger.Error("failed to open output file", slog.String("outputPath", outputPath), slog.String("errorMessage", err.Error()))
+					return err
+				}
+				outputFile = f
+				outputFileCloser = closeWriter
+			} else {
+				commandLogger.Debug("using stdout as output")
+				// changed output from file to io.Writer to support cmd.OutOrStdout for testing.
+				outputFile = cmd.OutOrStdout() // os.Stdout
 			}
-			outputFile = f
-		} else {
-			commandLogger.Debug("using stdout as output")
-			outputFile = os.Stdout
-		}
 
-		return nil
-	},
-	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-		endTime := time.Now()
-		duration := endTime.Sub(startTime)
-		commandLogger.Debug("command post run", slog.Time("endTime", endTime), slog.String("duration", duration.String()))
-		hadError := false
-		commandLogger.Debug("closing input",
-			slog.String("inputPath", inputPath),
-		)
-		closeInputErr := inputFile.Close()
-		if closeInputErr != nil {
-			hadError = true
-			errMsg := "failed to close input file"
-			commandLogger.Error(errMsg, slog.String("inputPath", inputPath), slog.String("errorMessage", closeInputErr.Error()))
-			closeInputErr = fmt.Errorf("%s: %w", errMsg, closeInputErr)
-		}
-		commandLogger.Debug("closing output",
-			slog.String("outputPath", outputPath),
-		)
-		closeOutputErr := outputFile.Close()
-		if closeOutputErr != nil {
-			hadError = true
-			errMsg := "failed to close output file"
-			commandLogger.Error(errMsg, slog.String("outputPath", outputPath), slog.String("errorMessage", closeOutputErr.Error()))
-			closeOutputErr = fmt.Errorf("%s: %w", errMsg, closeInputErr)
-		}
-		commandLogger.Debug("closing log output",
-			slog.String("logOutputPath", logOutputPath),
-		)
-		closeLogOutputErr := logOutputFile.Close()
-		if closeLogOutputErr != nil {
-			hadError = true
-			errMsg := "failed to close log output file"
-			// commandLogger.Error(errMsg, slog.String("logOutputPath", logOutputPath), slog.String("errorMessage", closeLogOutputErr.Error()))
-			closeLogOutputErr = fmt.Errorf("%s: %w", errMsg, closeInputErr)
-		}
-		if hadError {
-			err := errors.New("post run error(s)")
+			return nil
+		},
+		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+			endTime := time.Now()
+			duration := endTime.Sub(startTime)
+			commandLogger.Debug("command post run", slog.Time("endTime", endTime), slog.String("duration", duration.String()))
+			hadError := false
+			commandLogger.Debug("closing input",
+				slog.String("inputPath", inputPath),
+			)
+			closeInputErr := inputFileCloser(commandLogger, inputFile, "input", inputPath)
 			if closeInputErr != nil {
-				err = fmt.Errorf("%w: %w", err, closeInputErr)
+				hadError = true
 			}
+			commandLogger.Debug("closing output",
+				slog.String("outputPath", outputPath),
+			)
+			closeOutputErr := outputFileCloser(commandLogger, outputFile, "output", outputPath)
 			if closeOutputErr != nil {
-				err = fmt.Errorf("%w: %w", err, closeOutputErr)
+				hadError = true
 			}
+			commandLogger.Debug("closing log output",
+				slog.String("logOutputPath", logOutputPath),
+			)
+			closeLogOutputErr := logFileCloser(commandLogger, logOutputFile, "log", logOutputPath)
 			if closeLogOutputErr != nil {
-				err = fmt.Errorf("%w: %w", err, closeLogOutputErr)
+				hadError = true
 			}
-			return err
-		}
-		return nil
-	},
-	Run: func(cmd *cobra.Command, args []string) {},
+			if hadError {
+				err := errors.New("post run error(s)")
+				if closeInputErr != nil {
+					err = fmt.Errorf("%w: %w", err, closeInputErr)
+				}
+				if closeOutputErr != nil {
+					err = fmt.Errorf("%w: %w", err, closeOutputErr)
+				}
+				if closeLogOutputErr != nil {
+					err = fmt.Errorf("%w: %w", err, closeLogOutputErr)
+				}
+				return err
+			}
+			return nil
+		},
+		Run: func(cmd *cobra.Command, args []string) {},
+	}
 }
 
 func getFullCommandName(cmd *cobra.Command) string {
@@ -157,7 +204,7 @@ func getFullCommandName(cmd *cobra.Command) string {
 	return strings.Join(commandParts, "->")
 }
 
-func setUpLogger(logLevelString string, logOutput *os.File) *slog.Logger {
+func setUpLogger(logLevelString string, logOutput io.Writer) *slog.Logger {
 	var level slog.Level
 	logWriter := logOutput
 	switch strings.ToLower(logLevelString) {
@@ -188,19 +235,27 @@ func setUpLogger(logLevelString string, logOutput *os.File) *slog.Logger {
 	return logger
 }
 
-func SetupCommand(_buildHash, _buildDate string) {
+func SetupCommand(_buildHash, _buildDate string) *cobra.Command {
 	buildHash = _buildHash
 	buildDate = _buildDate
+	rootCmd := NewRootCMD()
 	rootCmd.PersistentFlags().StringVarP(&logLevelString, "logLevel", "l", "none", "The log level for the command. Supports error, warn, info, debug")
 	rootCmd.PersistentFlags().StringVar(&logOutputPath, "logOutput", stdErrFileName, "Where to write the logs from the command to. Default is stderr")
 	rootCmd.PersistentFlags().StringVarP(&inputPath, "input", "i", stdInFileName, "Where to read the input of the command (If there is any). Default is stdin")
 	rootCmd.PersistentFlags().StringVarP(&outputPath, "output", "o", stdOutFileName, "Where to write the output of the command. Default is stdout")
-	bulkRenameInit()
-	encryptDecryptInit()
-	base64CommandInit()
-	spaceAnalyzerInit()
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Printf("failed to execute: %v", err)
-		os.Exit(1)
+	bulkRenameInit(rootCmd)
+	encryptDecryptInit(rootCmd)
+	base64CommandInit(rootCmd)
+	spaceAnalyzerInit(rootCmd)
+	gzipInit(rootCmd)
+	return rootCmd
+}
+
+func getInputReader(logger *slog.Logger, inputFile io.Reader, inputText string) io.Reader {
+	if len(inputText) > 0 {
+		logger.Info("using provided text instead of input file")
+		return bytes.NewBufferString(inputText)
 	}
+	logger.Info("reading input from inputFile", slog.String("inputFilePath", inputPath))
+	return inputFile
 }

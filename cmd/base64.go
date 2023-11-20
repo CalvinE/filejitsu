@@ -54,51 +54,60 @@ const (
 	base64DecodeCommandName = "decode"
 )
 
-var base64Command = &cobra.Command{
-	Use:     base64CommandName,
-	Aliases: []string{"b64"},
-	Short:   "Base 64 encode / decode input",
-	Long:    "Base 64 encode / decode input",
-	RunE:    base64Run,
+func newBase64Command() *cobra.Command {
+	return &cobra.Command{
+		Use:     base64CommandName,
+		Aliases: []string{"b64"},
+		Short:   "Base 64 encode / decode input",
+		Long:    "Base 64 encode / decode input",
+		RunE:    base64Run,
+	}
 }
 
-var base64EncodeCommand = &cobra.Command{
-	Use:     base64EncodeCommandName,
-	Aliases: []string{"e"},
-	Short:   "Base 64 encode input",
-	Long:    "Base 64 encode input",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		base64Args.Decode = false
-		return base64Run(cmd, args)
-	},
+func newBase64EncodeCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:     base64EncodeCommandName,
+		Aliases: []string{"e"},
+		Short:   "Base 64 encode input",
+		Long:    "Base 64 encode input",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			base64Args.Decode = false
+			return base64Run(cmd, args)
+		},
+	}
 }
 
-var base64DecodeCommand = &cobra.Command{
-	Use:     base64DecodeCommandName,
-	Aliases: []string{"d"},
-	Short:   "Base 64 decode input",
-	Long:    "A simplified version of b64 -d. This command will try all encodings and succeed if any are successful",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		base64Args.Decode = true
-		base64Args.IsB64DCommand = true
-		return base64Run(cmd, args)
-	},
+func newBase64DecodeCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:     base64DecodeCommandName,
+		Aliases: []string{"d"},
+		Short:   "Base 64 decode input",
+		Long:    "A simplified version of b64 -d. This command will try all encodings and succeed if any are successful",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			base64Args.Decode = true
+			base64Args.IsB64DCommand = true
+			return base64Run(cmd, args)
+		},
+	}
 }
 
 var base64Args = Base64Args{}
 
-func base64CommandInit() {
+func base64CommandInit(parentCmd *cobra.Command) {
+	base64Command := newBase64Command()
 	base64Command.PersistentFlags().StringVarP(&base64Args.InputText, "inputText", "t", "", "Text to pass in as input")
 	base64Command.PersistentFlags().BoolVarP(&base64Args.Decode, "decode", "d", false, "if provided the command will decode the input. By default this command encodes the input.")
 	base64Command.PersistentFlags().BoolVarP(&base64Args.UseURLEncoding, "useUrlEncoding", "u", false, "if provided the command will encode / decode using url encoding. By default this command encodes / decodes using std encoding.")
 	base64Command.PersistentFlags().BoolVarP(&base64Args.OmitPadding, "omitPadding", "n", false, "if provided the command will encode /decode the input with padding. By default this command encodes / decodes with padding.")
 	base64Command.PersistentFlags().BoolVarP(&base64Args.OmitEndingNewLine, "omitEndingNewLine", "e", false, "if provided the command omit the newline at the end of the output.")
-	rootCmd.AddCommand(base64Command)
+	parentCmd.AddCommand(base64Command)
+	base64EncodeCommand := newBase64EncodeCommand()
 	base64EncodeCommand.PersistentFlags().StringVarP(&base64Args.InputText, "inputText", "t", "", "Text to pass in as input")
 	base64EncodeCommand.PersistentFlags().BoolVarP(&base64Args.UseURLEncoding, "useUrlEncoding", "u", false, "if provided the command will encode / decode using url encoding. By default this command encodes / decodes using std encoding.")
 	base64EncodeCommand.PersistentFlags().BoolVarP(&base64Args.OmitPadding, "omitPadding", "n", false, "if provided the command will encode /decode the input with padding. By default this command encodes / decodes with padding.")
 	base64EncodeCommand.PersistentFlags().BoolVarP(&base64Args.OmitEndingNewLine, "omitEndingNewLine", "e", false, "if provided the command omit the newline at the end of the output.")
 	base64Command.AddCommand(base64EncodeCommand)
+	base64DecodeCommand := newBase64DecodeCommand()
 	base64DecodeCommand.PersistentFlags().StringVarP(&base64Args.InputText, "inputText", "t", "", "Text to pass in as input")
 	base64DecodeCommand.PersistentFlags().BoolVarP(&base64Args.OmitEndingNewLine, "omitEndingNewLine", "e", false, "if provided the command omit the newline at the end of the output.")
 	base64Command.AddCommand(base64DecodeCommand)
@@ -106,13 +115,14 @@ func base64CommandInit() {
 
 func base64Run(cmd *cobra.Command, args []string) error {
 	var input io.Reader
-	if len(base64Args.InputText) > 0 {
-		commandLogger.Info("using provided text instead of input file")
-		input = bytes.NewBufferString(base64Args.InputText)
-	} else {
-		commandLogger.Info("reading input from inputFile", slog.String("inputFilePath", inputPath))
-		input = inputFile
-	}
+	input = getInputReader(commandLogger, inputFile, base64Args.InputText)
+	// if len(base64Args.InputText) > 0 {
+	// 	commandLogger.Info("using provided text instead of input file")
+	// 	input = bytes.NewBufferString(base64Args.InputText)
+	// } else {
+	// 	commandLogger.Info("reading input from inputFile", slog.String("inputFilePath", inputPath))
+	// 	input = inputFile
+	// }
 	targetEncoding := getBase64Encoding(commandLogger, base64Args.UseURLEncoding, base64Args.OmitPadding)
 	output := outputFile
 	if base64Args.Decode {
