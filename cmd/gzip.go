@@ -92,7 +92,7 @@ func gzipInit(parentCmd *cobra.Command) {
 	gzipCommand.PersistentFlags().StringVarP((*string)(&gzipArgs.CompressionLevel), "compressionLevel", "q", string(defaultCompression), "The compression level to use for gzip compression")
 	gzipCommand.PersistentFlags().StringVarP(&gzipArgs.Header.Comment, "comment", "m", "", "The comment to place in the gzip header")
 	gzipCommand.PersistentFlags().StringVarP(&gzipArgs.Header.Name, "name", "n", "", "The name to place in the gzip headers")
-	gzipCommand.PersistentFlags().StringVar(&gzipArgs.Header.ModTime, "modTime", "", "")
+	gzipCommand.PersistentFlags().StringVar(&gzipArgs.Header.ModTime, "modTime", "", "the modTime to place in the gzip headers. Uses the format 2006-01-02 15:04:05")
 	gzipCommand.PersistentFlags().BytesHexVarP(&gzipArgs.Header.Extra, "extra", "e", nil, "The extra data to place in the gzip header")
 	parentCmd.AddCommand(gzipCommand)
 	gunzipCommand := newGUNZIPCommand()
@@ -156,7 +156,9 @@ func runGUNZIP(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	// TODO: what to do with header?
-	// Should we detect if the output is a actual file and use it to write the file name etc?
+	// My thoughts are to have an init function that returns the header before decompressing.
+	// that way you can use the header to prep a decompress target file if that is what someone desires.
+	// For now I will ignore the header, until I find a need for it, or someone requests the functionality.
 	header, err := fgzip.Decompress(commandLogger, params)
 	if err != nil {
 		commandLogger.Error("failed to gunzip input", slog.String("errorMessage", err.Error()))
