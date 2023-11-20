@@ -90,8 +90,6 @@ func NewRootCMD() *cobra.Command {
 		Long:  "A CLI tool for File System tools",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			startTime = time.Now()
-			logOutputFile = os.Stderr
-			logFileCloser = noopCloseWriter
 			if logOutputPath != stdErrFileName {
 				logFile, err := os.OpenFile(logOutputPath, os.O_CREATE|os.O_WRONLY, 0644)
 				if err != nil {
@@ -99,6 +97,9 @@ func NewRootCMD() *cobra.Command {
 				}
 				logOutputFile = logFile
 				logFileCloser = closeWriter
+			} else {
+				logOutputFile = cmd.ErrOrStderr() // os.Stderr
+				logFileCloser = noopCloseWriter
 			}
 			logger := setUpLogger(logLevelString, logOutputFile)
 			runID := uuid.New().String()
@@ -113,7 +114,6 @@ func NewRootCMD() *cobra.Command {
 				slog.String("outputPath", outputPath),
 			)
 			commandLogger.Debug("setting up input", slog.String("inputPath", inputPath))
-			inputFileCloser = noopCloseReader
 			if inputPath != stdInFileName {
 				commandLogger.Info("inputFile set to something other than stdin", slog.String("inputPath", inputPath))
 				f, err := os.OpenFile(inputPath, os.O_RDONLY, 0644)
@@ -126,10 +126,10 @@ func NewRootCMD() *cobra.Command {
 			} else {
 				commandLogger.Debug("using stdin as input")
 				inputFile = cmd.InOrStdin() // os.Stdin
+				inputFileCloser = noopCloseReader
 			}
 
 			commandLogger.Debug("setting up output", slog.String("outputPath", outputPath))
-			outputFileCloser = noopCloseWriter
 			if outputPath != stdOutFileName {
 				commandLogger.Info("outputFile set to something other than stdout", slog.String("outputPath", outputPath))
 				f, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY, 0644)
@@ -143,6 +143,7 @@ func NewRootCMD() *cobra.Command {
 				commandLogger.Debug("using stdout as output")
 				// changed output from file to io.Writer to support cmd.OutOrStdout for testing.
 				outputFile = cmd.OutOrStdout() // os.Stdout
+				outputFileCloser = noopCloseWriter
 			}
 
 			return nil
