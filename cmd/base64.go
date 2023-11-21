@@ -13,6 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TODO: update BASE64.md to draw a distinction between the parent command and the child commands.
+
 type base64EncodingStrategy struct {
 	Name     string
 	Encoding *base64.Encoding
@@ -96,52 +98,41 @@ var base64Args = Base64Args{}
 func base64CommandInit(parentCmd *cobra.Command) {
 	base64Command := newBase64Command()
 	base64Command.PersistentFlags().StringVarP(&base64Args.InputText, "inputText", "t", "", "Text to pass in as input")
-	base64Command.PersistentFlags().BoolVarP(&base64Args.Decode, "decode", "d", false, "if provided the command will decode the input. By default this command encodes the input.")
-	base64Command.PersistentFlags().BoolVarP(&base64Args.UseURLEncoding, "useUrlEncoding", "u", false, "if provided the command will encode / decode using url encoding. By default this command encodes / decodes using std encoding.")
-	base64Command.PersistentFlags().BoolVarP(&base64Args.OmitPadding, "omitPadding", "n", false, "if provided the command will encode /decode the input with padding. By default this command encodes / decodes with padding.")
 	base64Command.PersistentFlags().BoolVarP(&base64Args.OmitEndingNewLine, "omitEndingNewLine", "e", false, "if provided the command omit the newline at the end of the output.")
+	base64Command.Flags().BoolVarP(&base64Args.Decode, "decode", "d", false, "if provided the command will decode the input. By default this command encodes the input.")
+	base64Command.Flags().BoolVarP(&base64Args.UseURLEncoding, "useUrlEncoding", "u", false, "if provided the command will encode / decode using url encoding. By default this command encodes / decodes using std encoding.")
+	base64Command.Flags().BoolVarP(&base64Args.OmitPadding, "omitPadding", "n", false, "if provided the command will encode /decode the input with padding. By default this command encodes / decodes with padding.")
 	parentCmd.AddCommand(base64Command)
 	base64EncodeCommand := newBase64EncodeCommand()
-	base64EncodeCommand.PersistentFlags().StringVarP(&base64Args.InputText, "inputText", "t", "", "Text to pass in as input")
 	base64EncodeCommand.PersistentFlags().BoolVarP(&base64Args.UseURLEncoding, "useUrlEncoding", "u", false, "if provided the command will encode / decode using url encoding. By default this command encodes / decodes using std encoding.")
 	base64EncodeCommand.PersistentFlags().BoolVarP(&base64Args.OmitPadding, "omitPadding", "n", false, "if provided the command will encode /decode the input with padding. By default this command encodes / decodes with padding.")
-	base64EncodeCommand.PersistentFlags().BoolVarP(&base64Args.OmitEndingNewLine, "omitEndingNewLine", "e", false, "if provided the command omit the newline at the end of the output.")
 	base64Command.AddCommand(base64EncodeCommand)
 	base64DecodeCommand := newBase64DecodeCommand()
-	base64DecodeCommand.PersistentFlags().StringVarP(&base64Args.InputText, "inputText", "t", "", "Text to pass in as input")
-	base64DecodeCommand.PersistentFlags().BoolVarP(&base64Args.OmitEndingNewLine, "omitEndingNewLine", "e", false, "if provided the command omit the newline at the end of the output.")
 	base64Command.AddCommand(base64DecodeCommand)
 }
 
 func base64Run(cmd *cobra.Command, args []string) error {
-	var input io.Reader
-	input = getInputReader(commandLogger, inputFile, base64Args.InputText)
-	// if len(base64Args.InputText) > 0 {
-	// 	commandLogger.Info("using provided text instead of input file")
-	// 	input = bytes.NewBufferString(base64Args.InputText)
-	// } else {
-	// 	commandLogger.Info("reading input from inputFile", slog.String("inputFilePath", inputPath))
-	// 	input = inputFile
-	// }
+	input := getInputReader(commandLogger, inputFile, base64Args.InputText)
 	targetEncoding := getBase64Encoding(commandLogger, base64Args.UseURLEncoding, base64Args.OmitPadding)
 	output := outputFile
 	if base64Args.Decode {
 		// decode
-		if base64Args.IsB64DCommand {
-			commandLogger.Debug("running simplified base64 decode command")
-			err := robustBase64Decode(commandLogger, input, output)
-			if err != nil {
-				commandLogger.Error("failed to base64 decode input to output", slog.String("errorMessage", err.Error()))
-				return err
-			}
-		} else {
-			commandLogger.Debug("running normal base64 decode command")
-			err := base64Decode(commandLogger, targetEncoding, input, output)
-			if err != nil {
-				commandLogger.Error("failed to base64 decode input to output", slog.String("errorMessage", err.Error()))
-				return err
-			}
+		// if base64Args.IsB64DCommand {
+		// commandLogger.Debug("running simplified base64 decode command")
+		commandLogger.Debug("running base64 decode command")
+		err := robustBase64Decode(commandLogger, input, output)
+		if err != nil {
+			commandLogger.Error("failed to base64 decode input to output", slog.String("errorMessage", err.Error()))
+			return err
 		}
+		// } else {
+		// 	commandLogger.Debug("running normal base64 decode command")
+		// 	err := base64Decode(commandLogger, targetEncoding, input, output)
+		// 	if err != nil {
+		// 		commandLogger.Error("failed to base64 decode input to output", slog.String("errorMessage", err.Error()))
+		// 		return err
+		// 	}
+		// }
 	} else {
 		// encode
 		err := base64Encode(commandLogger, targetEncoding, input, output)
@@ -193,6 +184,7 @@ func robustBase64Decode(commandLogger *slog.Logger, input io.Reader, output io.W
 		commandLogger.Debug("wrote decoded input to output", slog.Int("bytesWritten", bytesWritten))
 		return nil
 	}
+	commandLogger.Error("failed to decode using all base 64 encoding strategies", slog.String("errorMessage", err.Error()))
 	return outerErr
 }
 

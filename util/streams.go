@@ -41,7 +41,6 @@ func ReaderReadAll(logger *slog.Logger, r io.Reader) ([]byte, error) {
 	output := make([]byte, 0)
 	bytesRead := 0
 	done := false
-	// TODO: should I put some kind of crazy limit on this?
 	for !done {
 		rn, err := r.Read(buffer)
 		bytesRead += rn

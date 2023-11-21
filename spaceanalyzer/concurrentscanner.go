@@ -30,7 +30,6 @@ type ConcurrentFSScanner interface {
 
 type concurrentFSScanner struct {
 	concurrencyLimit int
-	// TODO: add concurrency limit to this struct and default to runtime.NumCPUs make concurrency limit configurable.
 }
 
 func NewConcurrentFSScanner(concurrencyLimit int) ConcurrentFSScanner {
@@ -64,9 +63,6 @@ func (cfs *concurrentFSScanner) Scan(logger *slog.Logger, entityPath, rootID str
 	go func() {
 		for {
 			j, ok := <-jobsChan
-			// wg.Add(1)
-			// TODO: figure out why the channel is closed before this is sent...
-			// TODO: get wg mechanics right
 			limiter <- true
 			if !ok {
 				logger.Warn("jobs channel closed")
@@ -89,18 +85,23 @@ func (cfs *concurrentFSScanner) Scan(logger *slog.Logger, entityPath, rootID str
 						slog.String("fullPath", j.FullPath),
 					)
 				}
+				entity := FileInfoToFSEntry(logger, j.Info, j.ParentID, j.ID, j.FullPath, shouldCalculateFileHashes, j.Depth)
+				entity.Depth = j.Depth
+				if j.Error != nil {
+					if len(entity.ErrorMessage) > 0 {
+						entity.ErrorMessage = fmt.Sprintf("%s|||||%s", j.Error.Error(), entity.ErrorMessage)
+					} else {
+						entity.ErrorMessage = j.Error.Error()
+					}
+				}
 				if j.IsDir {
-					dir := FileInfoToFSEntry(logger, j.Info, j.ParentID, j.ID, j.FullPath, shouldCalculateFileHashes, j.Depth)
-					dir.Depth = j.Depth
-					logger.Debug("received dir job", slog.Any("dirEntity", dir))
+					logger.Debug("processed dir job", slog.Any("dirEntity", entity))
 					mutex.Lock()
-					dirs[dir.ParentID] = append(dirs[dir.ParentID], dir)
+					dirs[entity.ParentID] = append(dirs[entity.ParentID], entity)
 					mutex.Unlock()
 				} else {
-					file := FileInfoToFSEntry(logger, j.Info, j.ParentID, j.ID, j.FullPath, shouldCalculateFileHashes, j.Depth)
-					file.Depth = j.Depth
 					mutex.Lock()
-					files[j.ParentID] = append(files[j.ParentID], file)
+					files[entity.ParentID] = append(files[j.ParentID], entity)
 					mutex.Unlock()
 				}
 				// <-limiter

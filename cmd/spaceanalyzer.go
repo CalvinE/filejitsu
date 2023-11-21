@@ -18,6 +18,7 @@ type SpaceAnalyzerArgs struct {
 	MaxRecursion        int    `json:"maxRecursion"`
 	CalculateFileHashes bool   `json:"calculateFileHashes"`
 	OutputFormat        string `json:"outputFormat"`
+	ConcurrencyLimit    int    `json:"concurrencyLimit"`
 	// ExistingAnalysisFile string `json:"existingAnalysisFile"`
 }
 
@@ -41,6 +42,7 @@ func spaceAnalyzerInit(parentCmd *cobra.Command) {
 	spaceAnalyzerCommand.PersistentFlags().IntVarP(&spaceAnalyzerArgs.MaxRecursion, "maxRecursion", "m", -1, "Max number of recursive calls allowed. -1 means no limit")
 	spaceAnalyzerCommand.PersistentFlags().BoolVarP(&spaceAnalyzerArgs.CalculateFileHashes, "calculateFileHashes", "c", false, "If present file hashes will be calculated on files")
 	spaceAnalyzerCommand.PersistentFlags().StringVarP(&spaceAnalyzerArgs.OutputFormat, "outputFormat", "f", "json", "Output format for scan data. Options are 'json' or 'sjson' for streaming json")
+	spaceAnalyzerCommand.PersistentFlags().IntVar(&spaceAnalyzerArgs.ConcurrencyLimit, "concurrencyLimit", 0, "Limits the number of concurrent files being processed at a time. 0 will default to the number of logical processor cores available. Defaults to 0")
 	// spaceAnalyzerCommand.PersistentFlags().BoolVarP(&spaceAnalyzerArgs.ExistingAnalysisFile, "existingAnalyzerFile", "e", "", "An existing analysis file from a previous")
 	parentCmd.AddCommand(spaceAnalyzerCommand)
 }

@@ -31,6 +31,7 @@ type FSEntity struct {
 	Permissions  uint32     `json:"permissions"`
 	LastModified time.Time  `json:"lastModified"`
 	Children     []FSEntity `json:"children,omitempty"`
+	ErrorMessage string     `json:"errorMessage,omitempty"`
 }
 
 type FSJob struct {

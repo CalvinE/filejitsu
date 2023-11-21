@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// THIS WHOLE FILE IS DEPRECATED... Keeping for posterity... for now
+
 type NonConcurrentFSSCanner interface {
 	Scan(logger *slog.Logger, currentPath, parentID, id string, calculateFileHashes bool, maxRecursion, recursionCount int) (FSEntity, error)
 }

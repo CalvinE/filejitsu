@@ -26,8 +26,7 @@ func populateExtraSizeInfo(item *FSEntity) {
 
 func Scan(logger *slog.Logger, params ScanParams) (FSEntity, error) {
 	// ncs := NewNonConcurrentFSScanner()
-	// TODO: parameterize concurrency limit
-	cfs := NewConcurrentFSScanner(0)
+	cfs := NewConcurrentFSScanner(params.ConcurrencyLimit)
 	info, err := cfs.Scan(logger, params.RootPath, "base", params.CalculateFileHashes, params.MaxRecursion)
 	logger.Info("finished scan")
 	if err != nil {
@@ -50,14 +49,14 @@ func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, id, fullPa
 	lastModified := fi.ModTime()
 	extension := ""
 	fileHash := ""
+	var hashError error
 	if isRegular {
 		size = fi.Size()
 		extension = path.Ext(name)
 		if shouldCalculateFileHash {
-			var err error
-			fileHash, err = calculateFileHash(logger, fullPath)
-			if err != nil {
-				logger.Warn("failed to calculate file hash", slog.Any("fullPath", fullPath), slog.String("errorMessage", err.Error()))
+			fileHash, hashError = calculateFileHash(logger, fullPath)
+			if hashError != nil {
+				logger.Warn("failed to calculate file hash", slog.Any("fullPath", fullPath), slog.String("errorMessage", hashError.Error()))
 			}
 		}
 	}
@@ -79,6 +78,7 @@ func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, id, fullPa
 		ParentID:     parentID,
 		ID:           id,
 		Depth:        depth,
+		ErrorMessage: hashError.Error(),
 	}
 	return e
 }

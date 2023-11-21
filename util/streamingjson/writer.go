@@ -9,6 +9,8 @@ import (
 	"strconv"
 )
 
+// TODO: rework delimiter to use prefixed delimiters instead of postfixed
+
 var (
 	ErrContextDone             = errors.New("operation cancelled by context")
 	ErrNoObjectBeforeDelimiter = errors.New("no object was present before delimiter")
@@ -92,7 +94,6 @@ func (j *jsonStreamer[T]) lengthPrefixStreamingJSONRead(ctx context.Context, rea
 			}
 			if readBuffer[0] == '{' {
 				doneReadingLength = true
-				break
 			}
 		}
 	}
@@ -108,8 +109,6 @@ func (j *jsonStreamer[T]) lengthPrefixStreamingJSONRead(ctx context.Context, rea
 	doneReadingBody := false
 	upperLimit := totalBytesRead + int(length-1)
 	j.growInternalBufferIfNeeded(upperLimit)
-	// TODO: need to add a buffer for reading the JSON data. Could not all be read in one pull, so need to keep track of how much is read?
-	// Can we resize a slice to make it "right sized" for subsequent pulls?terraform
 	for {
 		if doneReadingBody {
 			break
@@ -147,7 +146,6 @@ func (j *jsonStreamer[T]) delimitedStreamingJSONRead(ctx context.Context, reader
 	delimiterLength := len(j.Delimiter)
 	delimiterBytesMatch := 0
 	done := false
-	// TODO: need a buffer for JSON data. after delimiter we can chop off the delimiter and JSON unmarshal the thing.
 	for {
 		if done {
 			break
@@ -175,8 +173,6 @@ func (j *jsonStreamer[T]) delimitedStreamingJSONRead(ctx context.Context, reader
 					}
 				}
 			}
-			// TODO: have a check for error function for length prefix and delimited?
-			// Or am I over thinking it. The delimited works by having an object then a delimiter and repeat. Starting with the delimiter is dumb and should result in a error?
 			if err != nil {
 				if err == io.EOF {
 					return bytesRead, result, err

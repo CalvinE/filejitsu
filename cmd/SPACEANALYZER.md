@@ -16,6 +16,7 @@ See global parameters for things like `input`, `output` or `logging` [here](../R
 | `--maxRecursion` | `-m` | N | The max depth allowed in analysis. `-1` indicates that there is no limit. | `-1` |
 | `--calculateFileHashes` | `-c` | N | If provided SHA512 hashes are calculated on all regular files. | not enabled |
 | `--outputFormat` | `-f` | N | The desired output format. Supported values are `json` and `sjson` | `json` |
+| `--concurrencyLimit` | NA | N | Limits the number of concurrent files being processed at a time. 0 will default to the number of logical processor cores available. Defaults to 0 | `0` |
 
 ## Output Schema
 
