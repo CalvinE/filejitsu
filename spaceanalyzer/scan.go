@@ -78,7 +78,9 @@ func FileInfoToFSEntry(logger *slog.Logger, fi fs.FileInfo, parentID, id, fullPa
 		ParentID:     parentID,
 		ID:           id,
 		Depth:        depth,
-		ErrorMessage: hashError.Error(),
+	}
+	if hashError != nil {
+		e.ErrorMessage = hashError.Error()
 	}
 	return e
 }
