@@ -122,13 +122,23 @@ func encryptDecryptRun(cmd *cobra.Command, args []string) error {
 	switch encryptDecryptArgs.Operation {
 	case encrypt.OpDecrypt:
 		commandLogger.Debug("decrypt operation selected")
-		if err := encrypt.Decrypt(commandLogger, params); err != nil {
+		cipherStream, err := encrypt.NewAESDecryptionReader(commandLogger, params.Input, params.Passphrase)
+		if err != nil {
+			commandLogger.Error("failed to create decryption reader", slog.String("errorMessage", err.Error()))
+			return err
+		}
+		if err := encrypt.Decrypt(commandLogger, cipherStream, params.Output); err != nil {
 			commandLogger.Error("failed to decrypt data", slog.String("errorMessage", err.Error()))
 			return err
 		}
 	case encrypt.OpEncrypt:
 		commandLogger.Debug("encrypt operation selected")
-		if err := encrypt.Encrypt(commandLogger, params); err != nil {
+		cipherStream, err := encrypt.NewAESEncryptionWriter(commandLogger, params.Output, params.Passphrase)
+		if err != nil {
+			commandLogger.Error("failed to create encryption writer", slog.String("errorMessage", err.Error()))
+			return err
+		}
+		if err := encrypt.Encrypt(commandLogger, params.Input, cipherStream); err != nil {
 			commandLogger.Error("failed to encrypt data", slog.String("errorMessage", err.Error()))
 			return err
 		}

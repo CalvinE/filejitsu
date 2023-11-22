@@ -13,36 +13,68 @@ import (
 	"github.com/calvine/filejitsu/util"
 )
 
-func Encrypt(logger *slog.Logger, params Params) error {
+func NewAESEncryptionWriter(logger *slog.Logger, output io.Writer, passphrase []byte) (*cipher.StreamWriter, error) {
 	iv := make([]byte, aes.BlockSize)
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
 		logger.Error("failed to generate random nonce", slog.String("errorMessage", err.Error()))
-		return err
+		return nil, err
 	}
 	ivLen := len(iv)
 	logger.Debug("writing iv to encrypted file", slog.Int("ivLen", ivLen))
-	n, err := params.Output.Write(iv)
+	n, err := output.Write(iv)
 	if err != nil {
 		logger.Error("failed to write iv to encrypted file", slog.String("errorMessage", err.Error()))
-		return err
+		return nil, err
 	}
 	if n != ivLen {
 		err := fmt.Errorf("number of bytes written does not equal iv length: wrote %d - expected %d", n, ivLen)
 		logger.Error("failed to write iv to encrypted file", slog.String("errorMessage", err.Error()))
-		return err
+		return nil, err
 	}
-	hashedPassword := sha256.Sum256(params.Passphrase)
+	hashedPassword := sha256.Sum256(passphrase)
 	block, err := aes.NewCipher(hashedPassword[:])
 	if err != nil {
 		logger.Error("creating cipher block failed", slog.String("errorMessage", err.Error()))
-		return err
+		return nil, err
 	}
 	stream := cipher.NewOFB(block, iv)
 	cipherStream := cipher.StreamWriter{
 		S: stream,
-		W: params.Output,
+		W: output,
 	}
-	err = util.ProcessStreams(logger, params.Input, cipherStream)
+	return &cipherStream, nil
+}
+
+func Encrypt(logger *slog.Logger, input io.Reader, output *cipher.StreamWriter) error {
+	// iv := make([]byte, aes.BlockSize)
+	// if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+	// 	logger.Error("failed to generate random nonce", slog.String("errorMessage", err.Error()))
+	// 	return err
+	// }
+	// ivLen := len(iv)
+	// logger.Debug("writing iv to encrypted file", slog.Int("ivLen", ivLen))
+	// n, err := params.Output.Write(iv)
+	// if err != nil {
+	// 	logger.Error("failed to write iv to encrypted file", slog.String("errorMessage", err.Error()))
+	// 	return err
+	// }
+	// if n != ivLen {
+	// 	err := fmt.Errorf("number of bytes written does not equal iv length: wrote %d - expected %d", n, ivLen)
+	// 	logger.Error("failed to write iv to encrypted file", slog.String("errorMessage", err.Error()))
+	// 	return err
+	// }
+	// hashedPassword := sha256.Sum256(params.Passphrase)
+	// block, err := aes.NewCipher(hashedPassword[:])
+	// if err != nil {
+	// 	logger.Error("creating cipher block failed", slog.String("errorMessage", err.Error()))
+	// 	return err
+	// }
+	// stream := cipher.NewOFB(block, iv)
+	// cipherStream := cipher.StreamWriter{
+	// 	S: stream,
+	// 	W: params.Output,
+	// }
+	err := util.ProcessStreams(logger, input, output)
 	if err != nil {
 		logger.Error("failed to encrypt data", slog.String("errorMessage", err.Error()))
 		return err

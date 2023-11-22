@@ -3,15 +3,12 @@ package cmd
 import (
 	"compress/gzip"
 	"context"
-	"errors"
 	"log/slog"
 	"time"
 
 	fgzip "github.com/calvine/filejitsu/gzip"
 	"github.com/spf13/cobra"
 )
-
-type GZipCompressionLevel string
 
 type GZIPHeaderArgs struct {
 	Comment string `json:"comment"`
@@ -22,9 +19,9 @@ type GZIPHeaderArgs struct {
 }
 
 type GZIPArgs struct {
-	InputText        string               `json:"inputText"`
-	CompressionLevel GZipCompressionLevel `json:"compressionLevel"`
-	Header           GZIPHeaderArgs       `json:"gzipHeader"`
+	InputText        string                     `json:"inputText"`
+	CompressionLevel fgzip.GZipCompressionLevel `json:"compressionLevel"`
+	Header           GZIPHeaderArgs             `json:"gzipHeader"`
 }
 
 type GUNZIPArgs struct {
@@ -32,8 +29,6 @@ type GUNZIPArgs struct {
 }
 
 var (
-	errInvalidGZipLevel = errors.New("invalid GZIP level provided")
-
 	gzipArgs = GZIPArgs{}
 
 	gunzipArgs = GUNZIPArgs{}
@@ -42,12 +37,6 @@ var (
 const (
 	gzipCommandName   string = "gzip"
 	gunzipCommandName string = "gunzip"
-
-	noCompression      GZipCompressionLevel = "NoCompression"
-	bestSpeed          GZipCompressionLevel = "BestSpeed"
-	bestCompression    GZipCompressionLevel = "BestCompression"
-	huffmanOnly        GZipCompressionLevel = "HuffmanOnly"
-	defaultCompression GZipCompressionLevel = "DefaultCompression"
 )
 
 func newGZIPCommand() *cobra.Command {
@@ -70,26 +59,10 @@ func newGUNZIPCommand() *cobra.Command {
 	}
 }
 
-func GZipCompressionLevelToLevel(level GZipCompressionLevel) (int, error) {
-	switch level {
-	case noCompression:
-		return gzip.NoCompression, nil
-	case bestSpeed:
-		return gzip.BestSpeed, nil
-	case bestCompression:
-		return gzip.BestCompression, nil
-	case huffmanOnly:
-		return gzip.HuffmanOnly, nil
-	case defaultCompression:
-		return gzip.DefaultCompression, nil
-	}
-	return 0, errInvalidGZipLevel
-}
-
 func gzipInit(parentCmd *cobra.Command) {
 	gzipCommand := newGZIPCommand()
 	gzipCommand.PersistentFlags().StringVarP(&gzipArgs.InputText, "inputText", "t", "", "Text to pass in as input")
-	gzipCommand.PersistentFlags().StringVarP((*string)(&gzipArgs.CompressionLevel), "compressionLevel", "q", string(defaultCompression), "The compression level to use for gzip compression")
+	gzipCommand.PersistentFlags().StringVarP((*string)(&gzipArgs.CompressionLevel), "compressionLevel", "q", string(fgzip.DefaultCompression), "The compression level to use for gzip compression")
 	gzipCommand.PersistentFlags().StringVarP(&gzipArgs.Header.Comment, "comment", "m", "", "The comment to place in the gzip header")
 	gzipCommand.PersistentFlags().StringVarP(&gzipArgs.Header.Name, "name", "n", "", "The name to place in the gzip headers")
 	gzipCommand.PersistentFlags().StringVar(&gzipArgs.Header.ModTime, "modTime", "", "the modTime to place in the gzip headers. Uses the format 2006-01-02 15:04:05")
@@ -118,7 +91,7 @@ func validateGZIPArgs(ctx context.Context, args GZIPArgs) (fgzip.CompressParams,
 		params.Header.ModTime = modTime
 	}
 	params.Output = outputFile
-	compressionLevel, err := GZipCompressionLevelToLevel(args.CompressionLevel)
+	compressionLevel, err := fgzip.GZipCompressionLevelToLevel(args.CompressionLevel)
 	if err != nil {
 		commandLogger.Error("invalid compression level provided", slog.String("compressionLevel", string(args.CompressionLevel)), slog.String("errorMessage", err.Error()))
 		return params, err
@@ -135,7 +108,12 @@ func runGZIP(cmd *cobra.Command, args []string) error {
 	}
 
 	// TODO: populate the header with input file info if args are not set and input is a real file
-	if err := fgzip.Compress(commandLogger, params); err != nil {
+	out, err := fgzip.NewGZIPWriter(commandLogger, params.Output, params.Level, params.Header)
+	if err != nil {
+		commandLogger.Error("failed to create gzip writer", slog.String("errorMessage", err.Error()))
+		return err
+	}
+	if err := fgzip.Compress(commandLogger, params.Input, out); err != nil {
 		commandLogger.Error("failed to gzip input", slog.String("errorMessage", err.Error()))
 		return err
 	}
@@ -159,8 +137,12 @@ func runGUNZIP(cmd *cobra.Command, args []string) error {
 	// My thoughts are to have an init function that returns the header before decompressing.
 	// that way you can use the header to prep a decompress target file if that is what someone desires.
 	// For now I will ignore the header, until I find a need for it, or someone requests the functionality.
-	header, err := fgzip.Decompress(commandLogger, params)
+	in, header, err := fgzip.NewGZIPReader(commandLogger, params.Input)
 	if err != nil {
+		commandLogger.Error("failed to create gzip reader", slog.String("errorMessage", err.Error()))
+		return err
+	}
+	if err := fgzip.Decompress(commandLogger, in, params.Output); err != nil {
 		commandLogger.Error("failed to gunzip input", slog.String("errorMessage", err.Error()))
 		return err
 	}

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"testing"
+
+	"github.com/calvine/filejitsu/gzip"
 )
 
 func TestGZIPFromStdInRoundTrip(t *testing.T) {
@@ -90,12 +92,12 @@ func TestGZIPRoundTrip(t *testing.T) {
 }
 
 func TestGZIPCompressionModesRoundTrip(t *testing.T) {
-	compressionModes := []GZipCompressionLevel{
-		noCompression,
-		bestSpeed,
-		bestCompression,
-		huffmanOnly,
-		defaultCompression,
+	compressionModes := []gzip.GZipCompressionLevel{
+		gzip.NoCompression,
+		gzip.BestSpeed,
+		gzip.BestCompression,
+		gzip.HuffmanOnly,
+		gzip.DefaultCompression,
 	}
 	for _, cm := range compressionModes {
 		name := fmt.Sprintf("%s_Compression_Mode_Test", cm)

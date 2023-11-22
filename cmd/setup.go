@@ -12,48 +12,35 @@ import (
 
 	"log/slog"
 
+	"github.com/calvine/filejitsu/util"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
-type readerCloserFunc func(logger *slog.Logger, r io.Reader, name, path string) error
-type writerCloserFunc func(logger *slog.Logger, w io.Writer, name, path string) error
+type readerCloserFunc func(r io.Reader) error
+type writerCloserFunc func(w io.Writer) error
 
-func noopCloseReader(logger *slog.Logger, r io.Reader, name, path string) error {
+func noopCloseReader(r io.Reader) error {
 	return nil
 }
 
-func closeReader(logger *slog.Logger, r io.Reader, name, path string) error {
-	c, ok := r.(io.Closer)
-	if ok {
-		closeOutputErr := c.Close()
-		if closeOutputErr != nil {
-			errMsg := fmt.Sprintf("failed to close %s file", name)
-			commandLogger.Error(errMsg, slog.String("path", path), slog.String("errorMessage", closeOutputErr.Error()))
-			closeOutputErr = fmt.Errorf("%s: %w", errMsg, closeOutputErr)
-			return closeOutputErr
-		}
-	}
+func noopCloseWriter(w io.Writer) error {
 	return nil
 }
 
-func noopCloseWriter(logger *slog.Logger, w io.Writer, name, path string) error {
-	return nil
-}
-
-func closeWriter(logger *slog.Logger, w io.Writer, name, path string) error {
-	c, ok := w.(io.Closer)
-	if ok {
-		closeOutputErr := c.Close()
-		if closeOutputErr != nil {
-			errMsg := fmt.Sprintf("failed to close %s file", name)
-			commandLogger.Error(errMsg, slog.String("path", path), slog.String("errorMessage", closeOutputErr.Error()))
-			closeOutputErr = fmt.Errorf("%s: %w", errMsg, closeOutputErr)
-			return closeOutputErr
-		}
-	}
-	return nil
-}
+// func closeWriter(logger *slog.Logger, w io.Writer, name, path string) error {
+// 	c, ok := w.(io.Closer)
+// 	if ok {
+// 		closeOutputErr := c.Close()
+// 		if closeOutputErr != nil {
+// 			errMsg := fmt.Sprintf("failed to close %s file", name)
+// 			commandLogger.Error(errMsg, slog.String("path", path), slog.String("errorMessage", closeOutputErr.Error()))
+// 			closeOutputErr = fmt.Errorf("%s: %w", errMsg, closeOutputErr)
+// 			return closeOutputErr
+// 		}
+// 	}
+// 	return nil
+// }
 
 const (
 	stdInFileName  = "stdin"
@@ -96,7 +83,7 @@ func NewRootCMD() *cobra.Command {
 					return fmt.Errorf("failed to setup logging output file (%s): %w", logOutputPath, err)
 				}
 				logOutputFile = logFile
-				logFileCloser = closeWriter
+				logFileCloser = util.TryCloseWriter
 			} else {
 				logOutputFile = cmd.ErrOrStderr() // os.Stderr
 				logFileCloser = noopCloseWriter
@@ -122,7 +109,7 @@ func NewRootCMD() *cobra.Command {
 					return err
 				}
 				inputFile = f
-				inputFileCloser = closeReader
+				inputFileCloser = util.TryCloseReader
 			} else {
 				commandLogger.Debug("using stdin as input")
 				inputFile = cmd.InOrStdin() // os.Stdin
@@ -138,7 +125,7 @@ func NewRootCMD() *cobra.Command {
 					return err
 				}
 				outputFile = f
-				outputFileCloser = closeWriter
+				outputFileCloser = util.TryCloseWriter
 			} else {
 				commandLogger.Debug("using stdout as output")
 				// changed output from file to io.Writer to support cmd.OutOrStdout for testing.
@@ -156,22 +143,31 @@ func NewRootCMD() *cobra.Command {
 			commandLogger.Debug("closing input",
 				slog.String("inputPath", inputPath),
 			)
-			closeInputErr := inputFileCloser(commandLogger, inputFile, "input", inputPath)
+			closeInputErr := inputFileCloser(inputFile)
 			if closeInputErr != nil {
+				errMsg := "failed to close input file"
+				commandLogger.Error(errMsg, slog.String("path", inputPath), slog.String("errorMessage", closeInputErr.Error()))
+				closeInputErr = fmt.Errorf("%s: %w", errMsg, closeInputErr)
 				hadError = true
 			}
 			commandLogger.Debug("closing output",
 				slog.String("outputPath", outputPath),
 			)
-			closeOutputErr := outputFileCloser(commandLogger, outputFile, "output", outputPath)
+			closeOutputErr := outputFileCloser(outputFile)
 			if closeOutputErr != nil {
+				errMsg := "failed to close output file"
+				commandLogger.Error(errMsg, slog.String("path", outputPath), slog.String("errorMessage", closeOutputErr.Error()))
+				closeOutputErr = fmt.Errorf("%s: %w", errMsg, closeOutputErr)
 				hadError = true
 			}
 			commandLogger.Debug("closing log output",
 				slog.String("logOutputPath", logOutputPath),
 			)
-			closeLogOutputErr := logFileCloser(commandLogger, logOutputFile, "log", logOutputPath)
+			closeLogOutputErr := logFileCloser(logOutputFile)
 			if closeLogOutputErr != nil {
+				errMsg := "failed to close log output file"
+				commandLogger.Error(errMsg, slog.String("path", logOutputPath), slog.String("errorMessage", closeLogOutputErr.Error()))
+				closeLogOutputErr = fmt.Errorf("%s: %w", errMsg, closeLogOutputErr)
 				hadError = true
 			}
 			if hadError {

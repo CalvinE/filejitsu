@@ -31,21 +31,21 @@ func TestEncryptDecrypt(t *testing.T) {
 			originalData := slices.Clone(tc.data)
 			inputBuffer := bytes.NewBuffer(tc.data)
 			outputBuffer := bytes.NewBuffer([]byte{})
-			err := Encrypt(logger, Params{
-				Input:      inputBuffer,
-				Output:     outputBuffer,
-				Passphrase: tc.passphrase,
-			})
+			encryptionWriter, err := NewAESEncryptionWriter(logger, outputBuffer, tc.passphrase)
+			if err != nil {
+				t.Errorf("failed to create encryption writer: %v", err)
+			}
+			err = Encrypt(logger, inputBuffer, encryptionWriter)
 			if err != nil {
 				t.Errorf("encryption failed with error: %v", err)
 			}
 			encryptedData := slices.Clone(outputBuffer.Bytes())
 			t.Logf("encrypted data len %d", len(encryptedData))
-			err = Decrypt(logger, Params{
-				Input:      outputBuffer,
-				Output:     inputBuffer,
-				Passphrase: tc.passphrase,
-			})
+			decryptionReader, err := NewAESDecryptionReader(logger, outputBuffer, tc.passphrase)
+			if err != nil {
+				t.Errorf("failed to create decryption reader: %v", err)
+			}
+			err = Decrypt(logger, decryptionReader, inputBuffer)
 			if err != nil {
 				t.Errorf("decryption failed with error: %v", err)
 			}

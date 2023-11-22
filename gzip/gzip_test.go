@@ -18,10 +18,12 @@ func TestGzip(t *testing.T) {
 	testString := "This is a test string"
 	input := bytes.NewBuffer([]byte(testString))
 	output := bytes.NewBuffer([]byte{})
-	if err := Compress(logger, CompressParams{
-		Input:  input,
-		Output: output,
-	}); err != nil {
+	gzipOut, err := NewGZIPWriter(logger, output, gzip.DefaultCompression, gzip.Header{})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if err := Compress(logger, input, gzipOut); err != nil {
 		t.Error(err)
 	}
 	outputData := slices.Clone(output.Bytes())
@@ -32,10 +34,8 @@ func TestGzip(t *testing.T) {
 	// 	return
 	// }
 	output2 := bytes.NewBuffer([]byte{})
-	header, err := Decompress(logger, DecompressParams{
-		Input:  output,
-		Output: output2,
-	})
+	gzipIn, header, err := NewGZIPReader(logger, output)
+	err = Decompress(logger, gzipIn, output2)
 	if err != nil {
 		t.Error("failed to decompress gzip")
 		return
@@ -68,11 +68,12 @@ func TestGZipWithHeader(t *testing.T) {
 	testString := "This is a test string"
 	input := bytes.NewBuffer([]byte(testString))
 	output := bytes.NewBuffer([]byte{})
-	if err := Compress(logger, CompressParams{
-		Header: inputHeader,
-		Input:  input,
-		Output: output,
-	}); err != nil {
+	gzipOut, err := NewGZIPWriter(logger, output, gzip.DefaultCompression, inputHeader)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if err := Compress(logger, input, gzipOut); err != nil {
 		t.Error(err)
 	}
 	outputData := slices.Clone(output.Bytes())
@@ -83,10 +84,8 @@ func TestGZipWithHeader(t *testing.T) {
 	// 	return
 	// }
 	output2 := bytes.NewBuffer([]byte{})
-	header, err := Decompress(logger, DecompressParams{
-		Input:  output,
-		Output: output2,
-	})
+	gzipIn, header, err := NewGZIPReader(logger, output)
+	err = Decompress(logger, gzipIn, output2)
 	if err != nil {
 		t.Error("failed to decompress gzip")
 		return
