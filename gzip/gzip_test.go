@@ -35,9 +35,12 @@ func TestGzip(t *testing.T) {
 	// }
 	output2 := bytes.NewBuffer([]byte{})
 	gzipIn, header, err := NewGZIPReader(logger, output)
+	if err != nil {
+		t.Errorf("failed to construct gzip reader: %v", err)
+	}
 	err = Decompress(logger, gzipIn, output2)
 	if err != nil {
-		t.Error("failed to decompress gzip")
+		t.Errorf("failed to decompress gzip: %v", err)
 		return
 	}
 	t.Log(header)
@@ -85,9 +88,12 @@ func TestGZipWithHeader(t *testing.T) {
 	// }
 	output2 := bytes.NewBuffer([]byte{})
 	gzipIn, header, err := NewGZIPReader(logger, output)
+	if err != nil {
+		t.Errorf("failed to construct gzip reader: %v", err)
+	}
 	err = Decompress(logger, gzipIn, output2)
 	if err != nil {
-		t.Error("failed to decompress gzip")
+		t.Errorf("failed to decompress gzip: %v", err)
 		return
 	}
 	t.Log(header)
