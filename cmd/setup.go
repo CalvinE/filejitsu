@@ -245,6 +245,7 @@ func SetupCommand(_buildHash, _buildDate string) *cobra.Command {
 	base64CommandInit(rootCmd)
 	spaceAnalyzerInit(rootCmd)
 	gzipInit(rootCmd)
+	tarInit(rootCmd)
 	return rootCmd
 }
 
