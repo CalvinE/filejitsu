@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 
 	"github.com/calvine/filejitsu/gzip"
@@ -73,7 +72,6 @@ func tarPackageRun(cmd *cobra.Command, args []string) error {
 	// using the global input as currently designed will not work...
 	// we need a path to talk and tar each file for packing...
 	// Same likely true for output and unpacking...
-	fmt.Printf("%v", args)
 	if err := tar.TarPackage(commandLogger, tar.TarPackageParams{
 		InputPath: tarArgs.InputPath,
 		Output:    outputFile,

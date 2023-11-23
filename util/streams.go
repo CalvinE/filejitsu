@@ -6,6 +6,10 @@ import (
 	"log/slog"
 )
 
+type Flusher interface {
+	Flush() error
+}
+
 // ProcessStreams writes data from an io.Reader to and io.Writer
 func ProcessStreams(logger *slog.Logger, input io.Reader, output io.Writer) error {
 	inputBuffer := make([]byte, 64)

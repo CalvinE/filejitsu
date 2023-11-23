@@ -66,6 +66,9 @@ func TarPackage(logger *slog.Logger, params TarPackageParams) error {
 		out = gzipOut
 		defer func() {
 			logger.Debug("closing gzip writer")
+			if err := gzipOut.Flush(); err != nil {
+				logger.Warn("gzip writer failed to flush", slog.String("errorMessage", err.Error()))
+			}
 			if err := gzipOut.Close(); err != nil {
 				logger.Warn("gzip writer failed to close", slog.String("errorMessage", err.Error()))
 			}
@@ -85,6 +88,9 @@ func TarPackage(logger *slog.Logger, params TarPackageParams) error {
 	tarWriter := tar.NewWriter(out)
 	defer func() {
 		logger.Debug("closing tar writer")
+		if err := tarWriter.Flush(); err != nil {
+			logger.Warn("tar writer failed to flush", slog.String("errorMessage", err.Error()))
+		}
 		if err := tarWriter.Close(); err != nil {
 			logger.Warn("tar writer failed to close", slog.String("errorMessage", err.Error()))
 		}

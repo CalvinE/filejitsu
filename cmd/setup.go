@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -63,7 +64,7 @@ var (
 	inputFile  io.Reader
 	outputPath string
 	//TODO: take this out of global scope
-	outputFile io.Writer // *os.File
+	outputFile *bufio.Writer // *os.File
 	startTime  time.Time
 )
 
@@ -117,6 +118,7 @@ func NewRootCMD() *cobra.Command {
 			}
 
 			commandLogger.Debug("setting up output", slog.String("outputPath", outputPath))
+			var oFile io.Writer
 			if outputPath != stdOutFileName {
 				commandLogger.Info("outputFile set to something other than stdout", slog.String("outputPath", outputPath))
 				f, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY, 0644)
@@ -124,14 +126,16 @@ func NewRootCMD() *cobra.Command {
 					commandLogger.Error("failed to open output file", slog.String("outputPath", outputPath), slog.String("errorMessage", err.Error()))
 					return err
 				}
-				outputFile = f
+				oFile = f
 				outputFileCloser = util.TryCloseWriter
 			} else {
 				commandLogger.Debug("using stdout as output")
 				// changed output from file to io.Writer to support cmd.OutOrStdout for testing.
-				outputFile = cmd.OutOrStdout() // os.Stdout
+				oFile = cmd.OutOrStdout() // os.Stdout
 				outputFileCloser = noopCloseWriter
 			}
+
+			outputFile = bufio.NewWriter(oFile)
 
 			return nil
 		},
@@ -153,6 +157,11 @@ func NewRootCMD() *cobra.Command {
 			commandLogger.Debug("closing output",
 				slog.String("outputPath", outputPath),
 			)
+			commandLogger.Debug("flushing output file")
+			if err := outputFile.Flush(); err != nil {
+				commandLogger.Warn("failed to flush output file", slog.String("errorMessage", closeInputErr.Error()))
+				// TODO: error
+			}
 			closeOutputErr := outputFileCloser(outputFile)
 			if closeOutputErr != nil {
 				errMsg := "failed to close output file"
