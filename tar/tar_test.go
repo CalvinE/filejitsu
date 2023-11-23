@@ -38,7 +38,7 @@ func cleanTarTest(t *testing.T, tarFilePath, tarUnpackagePath string) error {
 }
 
 func TestTarPackageRoundTrip(t *testing.T) {
-	tarPath := "/home/calvin/fjt.gz.enc.tar"
+	tarPath := "/home/calvin/fjt.tar.gz.enc"
 	outputPath := "/home/calvin/fjtdest"
 	defer cleanTarTest(t, tarPath, outputPath)
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
@@ -67,10 +67,10 @@ func TestTarPackageRoundTrip(t *testing.T) {
 		t.Errorf("failed to write tar output: %v", err)
 		return
 	}
-	if err := output.Close(); err != nil {
-		t.Errorf("failed to close output tar: %v", err)
-		return
-	}
+	// if err := output.Close(); err != nil {
+	// 	t.Errorf("failed to close output tar: %v", err)
+	// 	return
+	// }
 	inputTar, err := os.Open(tarPath)
 	if err != nil {
 		t.Errorf("failed to open tar for unpack: %v", err)

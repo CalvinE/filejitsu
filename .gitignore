@@ -28,3 +28,7 @@ vendor
 
 filejitsu
 filejitsu.exe
+output.tar
+output.tar.gz
+output.tar.gz.enc
+output.tar.gz.denc

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/calvine/filejitsu/encrypt"
 	fgzip "github.com/calvine/filejitsu/gzip"
 	"github.com/calvine/filejitsu/util"
 )
@@ -50,6 +51,22 @@ type TarUnpackageParams struct {
 func TarPackage(logger *slog.Logger, params TarPackageParams) error {
 	logger.Debug("attempting to tar package the target path", slog.Any("params", params))
 	out := params.Output
+	// if use encryption then make encrypted writer
+	if params.UseEncryption {
+		logger.Debug("encryption enabled")
+		encryptedOut, err := encrypt.NewAESEncryptionWriter(logger, out, params.EncryptionOptions.Passphrase)
+		if err != nil {
+			logger.Error("failed to create encrypted stream writer", slog.String("errorMessage", err.Error()))
+			return err
+		}
+		out = encryptedOut
+		defer func() {
+			logger.Debug("closing encryption writer")
+			if err := encryptedOut.Close(); err != nil {
+				logger.Warn("encryption writer failed to close", slog.String("errorMessage", err.Error()))
+			}
+		}()
+	}
 	// if use gzip then make gzip writer
 	if params.UseGzip {
 		logger.Debug("gzip compression enabled", slog.Any("gzipOptions", params.GZIPOptions))
@@ -74,16 +91,6 @@ func TarPackage(logger *slog.Logger, params TarPackageParams) error {
 			}
 		}()
 	}
-	// if use encryption then make encrypted writer
-	// if params.UseEncryption {
-	// 	logger.Debug("encryption enabled")
-	// 	encryptedOut, err := encrypt.NewAESEncryptionWriter(logger, out, params.EncryptionOptions.Passphrase)
-	// 	if err != nil {
-	// 		logger.Error("failed to create encrypted stream writer", slog.String("errorMessage", err.Error()))
-	// 		return nil, err
-	// 	}
-	// 	out = encryptedOut
-	// }
 
 	tarWriter := tar.NewWriter(out)
 	defer func() {
@@ -167,6 +174,16 @@ func TarPackage(logger *slog.Logger, params TarPackageParams) error {
 
 func TarUnpackage(logger *slog.Logger, params TarUnpackageParams) error {
 	in := params.Input
+
+	if params.UseEncryption {
+		logger.Debug("using decryption for tar unpack")
+		decryptionReader, err := encrypt.NewAESDecryptionReader(logger, in, params.EncryptionOptions.Passphrase)
+		if err != nil {
+			logger.Error("failed to create decryption reader", slog.String("errorMessage", err.Error()))
+			return err
+		}
+		in = decryptionReader
+	}
 	if params.UseGzip {
 		logger.Debug("using gzip for tar unpack")
 		gzipReader, _, err := fgzip.NewGZIPReader(logger, in)
@@ -245,16 +262,6 @@ func TarUnpackage(logger *slog.Logger, params TarUnpackageParams) error {
 				logger.Error("failed to open target file for unpackaging", slog.String("target", target))
 				return err
 			}
-
-			// if params.UseEncryption {
-			// 	logger.Debug("using decryption for tar unpack")
-			// 	decryptionReader, err := encrypt.NewAESDecryptionReader(logger, in, params.EncryptionOptions.Passphrase)
-			// 	if err != nil {
-			// 		logger.Error("failed to create decryption reader", slog.String("errorMessage", err.Error()))
-			// 		return nil, err
-			// 	}
-			// 	in = decryptionReader
-			// }
 
 			// copy over contents
 			bytesWritten, err := io.Copy(f, tarReader)
