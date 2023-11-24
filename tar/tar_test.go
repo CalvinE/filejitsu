@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/calvine/filejitsu/gzip"
+	"github.com/calvine/filejitsu/util/mock"
 )
 
 func cleanTarTest(t *testing.T, tarFilePath, tarUnpackagePath string) error {
@@ -38,21 +40,32 @@ func cleanTarTest(t *testing.T, tarFilePath, tarUnpackagePath string) error {
 }
 
 func TestTarPackageRoundTrip(t *testing.T) {
-	tarPath := "/home/calvin/fjt.tar.gz.enc"
-	outputPath := "/home/calvin/fjtdest"
+	tmpDir := os.TempDir()
+	tarPath := filepath.Join(tmpDir, "fjt.tar.gz.enc")
+	outputPath := filepath.Join(tmpDir, "fjtdest")
 	defer cleanTarTest(t, tarPath, outputPath)
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelDebug.Level(),
 	}))
 	passphrase := []byte("This is my good password")
+	if err := os.Mkdir(outputPath, 0766); err != nil {
+		t.Errorf("failed to create output path: %s", err)
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(tarPath), 0766); err != nil {
+		t.Errorf("failed to crate dir for tar file: %v", err)
+		return
+	}
 	output, err := os.OpenFile(tarPath, os.O_CREATE|os.O_RDWR, 0644) // os.Open(tarPath)
 	if err != nil {
 		t.Errorf("failed to open destination file: %v", err)
 		return
 	}
+	inputPath, _, cleanup, _ := mock.MockDirTree("test_files")
+	defer cleanup()
 	err = TarPackage(logger, TarPackageParams{
-		InputPaths: []string{"/home/calvin/code/filejitsu/test_files"},
+		InputPaths: []string{inputPath},
 		UseGzip:    true,
 		GZIPOptions: GZIPOptions{
 			CompressionLevel: gzip.DefaultCompression,
@@ -63,6 +76,7 @@ func TestTarPackageRoundTrip(t *testing.T) {
 		},
 		Output: output,
 	})
+	output.Close()
 	if err != nil {
 		t.Errorf("failed to write tar output: %v", err)
 		return
@@ -89,4 +103,5 @@ func TestTarPackageRoundTrip(t *testing.T) {
 		t.Errorf("failed to unpackage tar: %v", err)
 		return
 	}
+	inputTar.Close()
 }
