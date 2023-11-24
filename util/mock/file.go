@@ -30,7 +30,7 @@ func getDirContentData(rootDir string) (map[string]MockFile, error) {
 			Content:  "Ea incididunt elit elit duis eiusmod quis pariatur. Tempor irure do velit eu voluptate nisi cupidatat sit consequat aliqua velit.",
 			FullPath: filepath.Join(rootDir, "file2.txt"),
 		},
-		"nested/bigfile.txt": {
+		filepath.Join("nested", "bigfile.txt"): {
 			Content: `
 			Exercitation exercitation elit laborum proident consectetur aliquip incididunt amet nulla exercitation reprehenderit ullamco cupidatat. Exercitation aliqua esse velit ad. Laborum quis irure nisi commodo qui cillum nisi consequat voluptate. Consectetur laborum culpa proident deserunt nulla quis minim.
 
@@ -52,11 +52,11 @@ Lorem laboris enim sunt amet exercitation deserunt consequat incididunt est eu a
 
 Sit quis reprehenderit Lorem incididunt veniam ut sit mollit proident pariatur labore. Laboris culpa ullamco veniam qui officia. Qui adipisicing eiusmod sunt nostrud cillum mollit sit.
 			`,
-			FullPath: filepath.Join(rootDir, "nested/bigfile.txt"),
+			FullPath: filepath.Join(rootDir, "nested", "bigfile.txt"),
 		},
-		"nested/nexted2/file.txt": {
+		filepath.Join("nested", "nexted2", "file.txt"): {
 			Content:  "a double nested file",
-			FullPath: filepath.Join(rootDir, "nested/nexted2/file.txt"),
+			FullPath: filepath.Join(rootDir, "nested", "nexted2", "file.txt"),
 		},
 	}
 
