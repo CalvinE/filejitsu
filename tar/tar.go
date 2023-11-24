@@ -3,6 +3,7 @@ package tar
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -29,15 +30,12 @@ type EncryptionOptions struct {
 }
 
 type TarPackageParams struct {
-	InputPath         string
+	InputPaths        []string
 	Output            io.Writer
 	UseGzip           bool
 	GZIPOptions       GZIPOptions
 	UseEncryption     bool
 	EncryptionOptions EncryptionOptions
-}
-
-type TarPackageOutput struct {
 }
 
 type TarUnpackageParams struct {
@@ -92,6 +90,13 @@ func TarPackage(logger *slog.Logger, params TarPackageParams) error {
 		}()
 	}
 
+	if len(params.InputPaths) == 0 {
+		errMsg := "no input paths provided for tar archive"
+		logger.Error(errMsg)
+		return errors.New(errMsg)
+	}
+
+	// make the item to contain the tar data
 	tarWriter := tar.NewWriter(out)
 	defer func() {
 		logger.Debug("closing tar writer")
@@ -102,72 +107,72 @@ func TarPackage(logger *slog.Logger, params TarPackageParams) error {
 			logger.Warn("tar writer failed to close", slog.String("errorMessage", err.Error()))
 		}
 	}()
-	// make the item to contain the tar data
-	filepath.Walk(params.InputPath, func(path string, info fs.FileInfo, err error) (returnErr error) {
-		walkLogger := logger.With(slog.String("path", path))
-		if err != nil {
-			walkLogger.Error("failed to walk entity",
-				slog.String("errorMessage", err.Error()),
-			)
-			return err
-		}
-		fMode := info.Mode()
-		if !fMode.IsRegular() && !fMode.IsDir() {
-			walkLogger.Debug("skipping entity because its not a regular file or directory")
-			return nil
-		}
-		tarHeader, returnErr := tar.FileInfoHeader(info, info.Name())
-		if returnErr != nil {
-			walkLogger.Error("failed to create tar header for file",
-				slog.String("errorMessage", err.Error()),
-			)
-			return returnErr
-		}
-
-		// TODO: Is this standard TAR here?
-		tarHeader.Name = strings.TrimPrefix(strings.Replace(path, params.InputPath, "", -1), string(filepath.Separator))
-
-		returnErr = tarWriter.WriteHeader(tarHeader)
-		if returnErr != nil {
-			walkLogger.Error("failed to write tar header for file", slog.String("errorMessage", err.Error()))
-			return returnErr
-		}
-
-		if fMode.IsRegular() {
-			logger.Debug("item is regular file, so writing file to tar package")
-			f, returnErr := os.Open(path)
-			if returnErr != nil {
-				walkLogger.Error("failed to open file",
-					slog.String("errorMessage", returnErr.Error()),
+	for _, ip := range params.InputPaths {
+		logger.Info("processing input path", slog.String("path", ip))
+		filepath.Walk(ip, func(path string, info fs.FileInfo, err error) (returnErr error) {
+			walkLogger := logger.With(slog.String("path", path))
+			if err != nil {
+				walkLogger.Error("failed to walk entity",
+					slog.String("errorMessage", err.Error()),
 				)
-				return returnErr
+				return err
 			}
-
-			defer func() {
-				returnErr = f.Close()
-				if returnErr != nil {
-					walkLogger.Error("failed to close file",
-						slog.String("errorMessage", returnErr.Error()),
-					)
-				}
-			}()
-
-			bytesWritten, returnErr := io.Copy(tarWriter, f)
-			logger.Debug("bytes written to tar writer", slog.Int64("bytesWritten", bytesWritten))
+			fMode := info.Mode()
+			if !fMode.IsRegular() && !fMode.IsDir() {
+				walkLogger.Debug("skipping entity because its not a regular file or directory")
+				return nil
+			}
+			tarHeader, returnErr := tar.FileInfoHeader(info, info.Name())
 			if returnErr != nil {
-				walkLogger.Error("failed to copy file to tar writer",
+				walkLogger.Error("failed to create tar header for file",
 					slog.String("errorMessage", err.Error()),
 				)
 				return returnErr
 			}
-		}
 
-		return nil
-	})
-	// TODO: will closing this cause an error when the base item is attempted to be closed?
-	// TODO: if it does will need flags to disable closing input, output or log output in the cmd package
+			// TODO: Is this standard TAR here?
+			tarHeader.Name = strings.TrimPrefix(strings.Replace(path, ip, "", -1), string(filepath.Separator))
+
+			returnErr = tarWriter.WriteHeader(tarHeader)
+			if returnErr != nil {
+				walkLogger.Error("failed to write tar header for file", slog.String("errorMessage", err.Error()))
+				return returnErr
+			}
+
+			if fMode.IsRegular() {
+				logger.Debug("item is regular file, so writing file to tar package")
+				f, returnErr := os.Open(path)
+				if returnErr != nil {
+					walkLogger.Error("failed to open file",
+						slog.String("errorMessage", returnErr.Error()),
+					)
+					return returnErr
+				}
+
+				defer func() {
+					returnErr = f.Close()
+					if returnErr != nil {
+						walkLogger.Error("failed to close file",
+							slog.String("errorMessage", returnErr.Error()),
+						)
+					}
+				}()
+
+				bytesWritten, returnErr := io.Copy(tarWriter, f)
+				logger.Debug("bytes written to tar writer", slog.Int64("bytesWritten", bytesWritten))
+				if returnErr != nil {
+					walkLogger.Error("failed to copy file to tar writer",
+						slog.String("errorMessage", err.Error()),
+					)
+					return returnErr
+				}
+			}
+
+			return nil
+		})
+	}
 	if err := tarWriter.Close(); err != nil {
-		logger.Error("failed to close tar writer", slog.String("errorMessage", err.Error()))
+		logger.Warn("failed to close tar writer", slog.String("errorMessage", err.Error()))
 	}
 	return nil
 }

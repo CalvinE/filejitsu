@@ -52,8 +52,8 @@ func TestTarPackageRoundTrip(t *testing.T) {
 		return
 	}
 	err = TarPackage(logger, TarPackageParams{
-		InputPath: "/home/calvin/code/filejitsu/test_files",
-		UseGzip:   true,
+		InputPaths: []string{"/home/calvin/code/filejitsu/test_files"},
+		UseGzip:    true,
 		GZIPOptions: GZIPOptions{
 			CompressionLevel: gzip.DefaultCompression,
 		},

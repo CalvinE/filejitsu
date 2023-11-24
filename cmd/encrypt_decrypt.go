@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 
 	"log/slog"
 
@@ -72,6 +71,23 @@ func validateEncryptArgs(ctx context.Context, args EncryptDecryptArgs) (encrypt.
 		err := errors.New("passphrase or passphraseFile are required")
 		return params, err
 	}
+	// if len(args.Passphrase) > 0 {
+	// 	params.Passphrase = []byte(args.Passphrase)
+	// } else {
+	// 	data, err := os.ReadFile(args.PassphraseFile)
+	// 	if err != nil {
+	// 		return params, fmt.Errorf("failed to read passphraseFile: %w", err)
+	// 	}
+	// 	params.Passphrase = data
+	// }
+	var err error
+	params.Passphrase, err = getPassphrase(commandLogger, args.PassphraseFile, args.Passphrase)
+	if err != nil {
+		params.Passphrase = nil
+		errMsg := "failed to get passphrase"
+		commandLogger.Error(errMsg, slog.String("errorMessage", err.Error()))
+		return params, fmt.Errorf("%s: %w", errMsg, err)
+	}
 
 	params.Input = getInputReader(commandLogger, inputFile, args.InputText)
 	// if len(encryptDecryptArgs.InputText) > 0 {
@@ -83,15 +99,6 @@ func validateEncryptArgs(ctx context.Context, args EncryptDecryptArgs) (encrypt.
 	// }
 	params.Output = outputFile
 
-	if len(args.Passphrase) > 0 {
-		params.Passphrase = []byte(args.Passphrase)
-	} else {
-		data, err := os.ReadFile(args.PassphraseFile)
-		if err != nil {
-			return params, fmt.Errorf("failed to read passphraseFile: %w", err)
-		}
-		params.Passphrase = data
-	}
 	return params, nil
 }
 

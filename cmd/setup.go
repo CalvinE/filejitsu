@@ -266,3 +266,17 @@ func getInputReader(logger *slog.Logger, inputFile io.Reader, inputText string) 
 	logger.Info("reading input from inputFile", slog.String("inputFilePath", inputPath))
 	return inputFile
 }
+
+func getPassphrase(logger *slog.Logger, passphraseFile string, passphrase string) ([]byte, error) {
+	if len(passphrase) > 0 {
+		logger.Debug("passphrase provided so taking it")
+		return []byte(passphrase), nil
+	} else {
+		logger.Debug("passphrase file provided", slog.String("file", passphraseFile))
+		data, err := os.ReadFile(passphraseFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read passphraseFile: %w", err)
+		}
+		return data, nil
+	}
+}

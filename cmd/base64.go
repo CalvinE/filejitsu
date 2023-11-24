@@ -188,22 +188,22 @@ func robustBase64Decode(commandLogger *slog.Logger, input io.Reader, output io.W
 	return outerErr
 }
 
-func base64Decode(commandLogger *slog.Logger, targetEncoding *base64.Encoding, input io.Reader, output io.Writer) error {
-	commandLogger.Debug("decode operation selected")
-	base64Decoder := base64.NewDecoder(targetEncoding, input)
-	data, err := util.ReaderReadAll(commandLogger, base64Decoder)
-	if err != nil {
-		commandLogger.Error("failed to read data from base 64 decoder", slog.String("errorMessage", err.Error()))
-		return err
-	}
-	bytesWritten, err := output.Write(data)
-	if err != nil {
-		commandLogger.Error("failed to write decoded data to output", slog.String("errorMessage", err.Error()))
-		return err
-	}
-	commandLogger.Debug("wrote decoded input to output", slog.Int("bytesWritten", bytesWritten))
-	return nil
-}
+// func base64Decode(commandLogger *slog.Logger, targetEncoding *base64.Encoding, input io.Reader, output io.Writer) error {
+// 	commandLogger.Debug("decode operation selected")
+// 	base64Decoder := base64.NewDecoder(targetEncoding, input)
+// 	data, err := util.ReaderReadAll(commandLogger, base64Decoder)
+// 	if err != nil {
+// 		commandLogger.Error("failed to read data from base 64 decoder", slog.String("errorMessage", err.Error()))
+// 		return err
+// 	}
+// 	bytesWritten, err := output.Write(data)
+// 	if err != nil {
+// 		commandLogger.Error("failed to write decoded data to output", slog.String("errorMessage", err.Error()))
+// 		return err
+// 	}
+// 	commandLogger.Debug("wrote decoded input to output", slog.Int("bytesWritten", bytesWritten))
+// 	return nil
+// }
 
 func base64Encode(commandLogger *slog.Logger, targetEncoding *base64.Encoding, input io.Reader, output io.Writer) error {
 	commandLogger.Debug("encode operation selected")

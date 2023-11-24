@@ -63,7 +63,7 @@ func TestRoundTripTar(t *testing.T) {
 				return []string{
 					"tar",
 					"-e",
-					"-s",
+					"-p",
 					"test1",
 					"-o",
 					tarPath,
@@ -74,7 +74,7 @@ func TestRoundTripTar(t *testing.T) {
 				return []string{
 					"tar",
 					"-e",
-					"-s",
+					"-p",
 					"test1",
 					"-i",
 					tarPath,
