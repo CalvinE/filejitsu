@@ -54,6 +54,7 @@ func tarInit(parentCmd *cobra.Command) {
 }
 
 func tarPackageRun(cmd *cobra.Command, args []string) error {
+	// TODO: need validate args to check for if input path is specified for tar and not for untar (it would use -i)
 	commandLogger.Debug("running tar package")
 	if len(tarArgs.InputPath) == 0 {
 		commandLogger.Debug("input path flag not set, trying to set from remaining args")
