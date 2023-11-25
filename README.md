@@ -22,3 +22,6 @@ Not all commands use the global parameters. Specifically `input` and `output`. T
 |decrypt|dcry|[Encrypt / Decrypt Command](./cmd/ENCRYPT_DECRYPT.md)|Decrypt AES-256 encrypted data.|
 |base64|b64|[Base64 Encode / Decode](./cmd/BASE64.md)|Base 64 encode and decode input. Supports standard and url |
 |space-analyzer|sa|[Space Analyzer](./cmd/SPACEANALYZER.md)|Analyzes files on disk. Can be used for a variety of purposes like seeing what taking up disk space, finding duplicate files (by content or by name), etc...|
+|gzip|gz|[GZIP Compress](./cmd/GZIP.md)|Gzip compression tool|
+|gunzip|guz|[GZIP Decompress](./cmd/GZIP.md)|Gzip decompression tool|
+|tar||[TAR utility](./cmd/TAR.md)|A tool for creating and unpacking TAR files. Also supports compression with gzip and encryption with AES-256|
