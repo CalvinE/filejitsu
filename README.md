@@ -25,3 +25,4 @@ Not all commands use the global parameters. Specifically `input` and `output`. T
 |gzip|gz|[GZIP Compress](./cmd/GZIP.md)|Gzip compression tool|
 |gunzip|guz|[GZIP Decompress](./cmd/GZIP.md)|Gzip decompression tool|
 |tar||[TAR utility](./cmd/TAR.md)|A tool for creating and unpacking TAR files. Also supports compression with gzip and encryption with AES-256|
+|version|||Prints Version information about the filejitsu build to the output file (defaults to stdout)|
