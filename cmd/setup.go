@@ -53,6 +53,7 @@ const (
 var (
 	buildHash string
 	buildDate string
+	version   string
 
 	logLevelString string
 	logOutputPath  string
@@ -97,6 +98,7 @@ func NewRootCMD() *cobra.Command {
 				slog.Time("startTime", startTime),
 				slog.String("buildHash", buildHash),
 				slog.String("buildDate", buildDate),
+				slog.String("version", version),
 				slog.String("logOutputPath", logOutputPath),
 				slog.String("inputPath", inputPath),
 				slog.String("outputPath", outputPath),
@@ -241,9 +243,10 @@ func setUpLogger(logLevelString string, logOutput io.Writer) *slog.Logger {
 	return logger
 }
 
-func SetupCommand(_buildHash, _buildDate string) *cobra.Command {
+func SetupCommand(_buildHash, _buildDate, _buildTag string) *cobra.Command {
 	buildHash = _buildHash
 	buildDate = _buildDate
+	version = _buildTag
 	rootCmd := NewRootCMD()
 	rootCmd.PersistentFlags().StringVarP(&logLevelString, "logLevel", "l", "none", "The log level for the command. Supports error, warn, info, debug")
 	rootCmd.PersistentFlags().StringVar(&logOutputPath, "logOutput", stdErrFileName, "Where to write the logs from the command to. Default is stderr")
@@ -255,6 +258,7 @@ func SetupCommand(_buildHash, _buildDate string) *cobra.Command {
 	spaceAnalyzerInit(rootCmd)
 	gzipInit(rootCmd)
 	tarInit(rootCmd)
+	versionInit(rootCmd, buildDate, buildHash, version)
 	return rootCmd
 }
 

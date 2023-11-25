@@ -131,7 +131,7 @@ func TestRoundTripTar(t *testing.T) {
 				t.Errorf("failed to create mock dir tree: %v", err)
 				return
 			}
-			tarCmd := SetupCommand("", "")
+			tarCmd := SetupCommand("", "", "")
 			inputPaths := []string{testRootDir}
 			if len(tc.AdditionalInputPaths) > 0 {
 				inputPaths = append(inputPaths, tc.AdditionalInputPaths...)
@@ -142,7 +142,7 @@ func TestRoundTripTar(t *testing.T) {
 				return
 			}
 			untarPath := filepath.Join(tmpDir, "test_untar")
-			untarCmd := SetupCommand("", "")
+			untarCmd := SetupCommand("", "", "")
 			untarCmd.SetArgs(tc.GetUntarArgs(tarPath, untarPath))
 			defer func() {
 				os.Remove(tarPath)
@@ -162,7 +162,7 @@ func TestRoundTripTar(t *testing.T) {
 }
 
 func TestTarHelp(t *testing.T) {
-	tarCmd := SetupCommand("", "")
+	tarCmd := SetupCommand("", "", "")
 	tarCmd.SetArgs([]string{
 		"tar",
 		"-h",

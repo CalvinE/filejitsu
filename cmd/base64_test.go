@@ -8,7 +8,7 @@ import (
 
 func TestBase64SimplifiedFromStdInRoundTrip(t *testing.T) {
 	inputString := "hey there"
-	base64ECommand := SetupCommand("", "")
+	base64ECommand := SetupCommand("", "", "")
 	input := bytes.NewBufferString(inputString)
 	base64ECommand.SetIn(input)
 	output := bytes.NewBuffer([]byte{})
@@ -26,7 +26,7 @@ func TestBase64SimplifiedFromStdInRoundTrip(t *testing.T) {
 		t.Errorf("failed to read base64 encode output: %s", err.Error())
 		return
 	}
-	base64DCommand := SetupCommand("", "")
+	base64DCommand := SetupCommand("", "", "")
 	input2 := bytes.NewBuffer(out)
 	base64DCommand.SetIn(input2)
 	output2 := bytes.NewBuffer([]byte{})
@@ -52,7 +52,7 @@ func TestBase64SimplifiedFromStdInRoundTrip(t *testing.T) {
 
 func TestBase64FromStdInRoundTrip(t *testing.T) {
 	inputString := "hey there"
-	base64ECommand := SetupCommand("", "")
+	base64ECommand := SetupCommand("", "", "")
 	input := bytes.NewBufferString(inputString)
 	base64ECommand.SetIn(input)
 	output := bytes.NewBuffer([]byte{})
@@ -69,7 +69,7 @@ func TestBase64FromStdInRoundTrip(t *testing.T) {
 		t.Errorf("failed to read base64 encode output: %s", err.Error())
 		return
 	}
-	base64DCommand := SetupCommand("", "")
+	base64DCommand := SetupCommand("", "", "")
 	input2 := bytes.NewBuffer(out)
 	base64DCommand.SetIn(input2)
 	output2 := bytes.NewBuffer([]byte{})
@@ -95,7 +95,7 @@ func TestBase64FromStdInRoundTrip(t *testing.T) {
 
 func TestBase64RoundTrip(t *testing.T) {
 	inputString := "hey there"
-	base64EncodeCommand := SetupCommand("", "")
+	base64EncodeCommand := SetupCommand("", "", "")
 	output := bytes.NewBuffer([]byte{})
 	base64EncodeCommand.SetOut(output)
 	base64EncodeCommand.SetArgs([]string{
@@ -112,7 +112,7 @@ func TestBase64RoundTrip(t *testing.T) {
 		t.Errorf("failed to read gzip command output: %s", err.Error())
 		return
 	}
-	base64DecodeCommand := SetupCommand("", "")
+	base64DecodeCommand := SetupCommand("", "", "")
 	output2 := bytes.NewBuffer([]byte{})
 	base64DecodeCommand.SetOut(output2)
 	base64DecodeCommand.SetArgs([]string{

@@ -11,7 +11,7 @@ import (
 
 func TestGZIPFromStdInRoundTrip(t *testing.T) {
 	inputString := "hey there"
-	gzipCommand := SetupCommand("", "")
+	gzipCommand := SetupCommand("", "", "")
 	input := bytes.NewBufferString(inputString)
 	gzipCommand.SetIn(input)
 	output := bytes.NewBuffer([]byte{})
@@ -28,7 +28,7 @@ func TestGZIPFromStdInRoundTrip(t *testing.T) {
 		t.Errorf("failed to read gzip command output: %s", err.Error())
 		return
 	}
-	gunzipCommand := SetupCommand("", "")
+	gunzipCommand := SetupCommand("", "", "")
 	input2 := bytes.NewBuffer(out)
 	gunzipCommand.SetIn(input2)
 	output2 := bytes.NewBuffer([]byte{})
@@ -52,7 +52,7 @@ func TestGZIPFromStdInRoundTrip(t *testing.T) {
 
 func TestGZIPRoundTrip(t *testing.T) {
 	inputString := "hey there"
-	gzipCommand := SetupCommand("", "")
+	gzipCommand := SetupCommand("", "", "")
 	output := bytes.NewBuffer([]byte{})
 	gzipCommand.SetOut(output)
 	gzipCommand.SetArgs([]string{
@@ -69,7 +69,7 @@ func TestGZIPRoundTrip(t *testing.T) {
 		t.Errorf("failed to read gzip command output: %s", err.Error())
 		return
 	}
-	gunzipCommand := SetupCommand("", "")
+	gunzipCommand := SetupCommand("", "", "")
 	output2 := bytes.NewBuffer([]byte{})
 	gunzipCommand.SetOut(output2)
 	gunzipCommand.SetArgs([]string{
@@ -103,7 +103,7 @@ func TestGZIPCompressionModesRoundTrip(t *testing.T) {
 		name := fmt.Sprintf("%s_Compression_Mode_Test", cm)
 		t.Run(name, func(t *testing.T) {
 			inputString := "hey there"
-			gzipCommand := SetupCommand("", "")
+			gzipCommand := SetupCommand("", "", "")
 			input := bytes.NewBufferString(inputString)
 			gzipCommand.SetIn(input)
 			output := bytes.NewBuffer([]byte{})
@@ -122,7 +122,7 @@ func TestGZIPCompressionModesRoundTrip(t *testing.T) {
 				t.Errorf("failed to read gzip command output: %s", err.Error())
 				return
 			}
-			gunzipCommand := SetupCommand("", "")
+			gunzipCommand := SetupCommand("", "", "")
 			input2 := bytes.NewBuffer(out)
 			gunzipCommand.SetIn(input2)
 			output2 := bytes.NewBuffer([]byte{})

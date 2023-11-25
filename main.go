@@ -8,12 +8,13 @@ import (
 )
 
 var (
-	commitHash = "not_loaded_via_ld"
-	buildDate  = "not_loaded_via_ld"
+	commitHash = "not_populated"
+	buildDate  = "not_populated"
+	buildTag   = "not_populated"
 )
 
 func main() {
-	command := cmd.SetupCommand(commitHash, buildDate)
+	command := cmd.SetupCommand(commitHash, buildDate, buildTag)
 	if err := command.Execute(); err != nil {
 		fmt.Printf("failed to execute: %v", err)
 		os.Exit(1)

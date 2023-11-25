@@ -11,7 +11,7 @@ import (
 func TestEncryptDecryptFromStdInRoundTrip(t *testing.T) {
 	passphrase := "weaqliugvnjieuwn98738r9o87GPI*UYGYOG\\(*O\\)PG&O"
 	inputString := "hey there"
-	encryptCommand := SetupCommand("", "")
+	encryptCommand := SetupCommand("", "", "")
 	input := bytes.NewBufferString(inputString)
 	encryptCommand.SetIn(input)
 	output := bytes.NewBuffer([]byte{})
@@ -30,7 +30,7 @@ func TestEncryptDecryptFromStdInRoundTrip(t *testing.T) {
 		t.Errorf("failed to read gzip command output: %s", err.Error())
 		return
 	}
-	decryptCommand := SetupCommand("", "")
+	decryptCommand := SetupCommand("", "", "")
 	input2 := bytes.NewBuffer(out)
 	decryptCommand.SetIn(input2)
 	output2 := bytes.NewBuffer([]byte{})
@@ -57,7 +57,7 @@ func TestEncryptDecryptFromStdInRoundTrip(t *testing.T) {
 func TestEncryptDecryptRoundTrip(t *testing.T) {
 	passphrase := "weaqliugvnjieuwn98738r9o87GPI*UYGYOG\\(*O\\)PG&O"
 	inputString := "hey there"
-	encryptCommand := SetupCommand("", "")
+	encryptCommand := SetupCommand("", "", "")
 	output := bytes.NewBuffer([]byte{})
 	encryptCommand.SetOut(output)
 	encryptCommand.SetArgs([]string{
@@ -76,7 +76,7 @@ func TestEncryptDecryptRoundTrip(t *testing.T) {
 		t.Errorf("failed to read gzip command output: %s", err.Error())
 		return
 	}
-	decryptCommand := SetupCommand("", "")
+	decryptCommand := SetupCommand("", "", "")
 	output2 := bytes.NewBuffer([]byte{})
 	decryptCommand.SetOut(output2)
 	decryptCommand.SetArgs([]string{
