@@ -134,13 +134,14 @@ func ValidateTarUnpackageArgs(logger *slog.Logger, tarArgs TarArgs, args []strin
 		numArgs := len(args)
 		if numArgs == 1 {
 			tarArgs.OutputPath = args[0]
-			logger.Debug("pulling input path from remaining args")
+			logger.Debug("pulling output path from remaining args")
 		} else {
 			errMsg := "no arguments or too many arguments provided and output path not set"
 			logger.Error(errMsg, slog.Int("numArgs", numArgs))
 			return params, errors.New(errMsg)
 		}
 	}
+	logger.Debug("setting outputPath", slog.String("outputPath", tarArgs.OutputPath))
 	params.OutputPath = tarArgs.OutputPath
 	// gzip stuff
 	if tarArgs.UseGZip {
