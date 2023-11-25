@@ -275,7 +275,14 @@ func getPassphrase(logger *slog.Logger, passphraseFile string, passphrase string
 		logger.Debug("passphrase file provided", slog.String("file", passphraseFile))
 		data, err := os.ReadFile(passphraseFile)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read passphraseFile: %w", err)
+			errMsg := "failed to read passphraseFile"
+			logger.Error(errMsg, slog.String("errorMessage", err.Error()))
+			return nil, fmt.Errorf("%s: %w", errMsg, err)
+		}
+		if len(data) == 0 {
+			errMsg := "no data found in passphrase file"
+			logger.Error(errMsg)
+			return nil, errors.New(errMsg)
 		}
 		return data, nil
 	}

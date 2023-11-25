@@ -59,7 +59,6 @@ func spaceAnalyzerScanRun(cmd *cobra.Command, args []string) error {
 	}
 	output := outputFile
 	var bytesWritten int
-	// TODO: add a option to enable streaming JSON and if not present do normal ish.
 	streamingOutput := spaceAnalyzerArgs.OutputFormat == "sjson"
 	if streamingOutput {
 		commandLogger.Info("writing output as streaming JSON")

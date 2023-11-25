@@ -13,7 +13,6 @@ const (
 	OtherType     EntityType = "other"
 )
 
-// TODO: add errors hash and scan to struct...
 type FSEntity struct {
 	ID           string     `json:"id,omitempty"`
 	ParentID     string     `json:"parentID,omitempty"`

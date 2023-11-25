@@ -30,6 +30,7 @@ func newTarCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   tarCommandName,
 		Short: "A tool for creating and unpacking tar archives",
+		Long:  "A tool to package or unpackage a tar archive with optional gzip compression and AES256 encryption",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if tarArgs.Unpackage {
 				return tarUnpackageRun(cmd, args)
@@ -48,16 +49,25 @@ var (
 
 func tarInit(parentCmd *cobra.Command) {
 	tarCommand := newTarCommand()
-	tarCommand.PersistentFlags().StringArrayVar(&tarArgs.InputPaths, "inputPath", nil, "(USED ONLY WITH CREATING A TAR ARCHIVE I.E. NO unpackage flag) the input path to tar. can be file or directory. can be specified multiple times")
-	tarCommand.PersistentFlags().StringVar(&tarArgs.OutputPath, "outputPath", "", "(USED ONLY WITH THE unpackage FLAG) the output path to untar the contents of a tar archive to. must be a directory")
-	tarCommand.PersistentFlags().BoolVarP(&tarArgs.UseGZip, "useGzip", "z", false, "if present the contents being packaged or unpackaged will be gzipped")
-	tarCommand.PersistentFlags().StringVarP((*string)(&tarArgs.GzipCompressionLevel), "compressionLevel", "q", string(gzip.DefaultCompression), "The compression level to use for gzip compression")
-	tarCommand.PersistentFlags().BoolVarP(&tarArgs.Unpackage, "unpackage", "u", false, "if present the input tar package will be unpacked at the output path")
-	tarCommand.PersistentFlags().BoolVarP(&tarArgs.UseEncryption, "crypt", "e", false, "if present the tar will be encrypted while created, or decrypted while unpacked. Requires a passphrase or passphrase file be provided")
-	tarCommand.PersistentFlags().StringVarP(&tarArgs.Passphrase, "passphrase", "p", "", "The passphrase used to encrypt the data.")
-	tarCommand.PersistentFlags().StringVarP(&tarArgs.PassphraseFile, "passphraseFile", "f", "", "The file which will be read to get the passphrase used for encryption")
+	tarCommand.PersistentFlags().StringArrayVar(&tarArgs.InputPaths, "inputPath", nil, "The input path to tar. Can be file or directory. Can be specified multiple times - (USED ONLY WITH CREATING A TAR ARCHIVE I.E. NO unpackage flag)")
+	tarCommand.PersistentFlags().StringVar(&tarArgs.OutputPath, "outputPath", "", "The output path to untar the contents of a tar archive to. Must be a directory - (USED ONLY WITH THE unpackage FLAG)")
+	tarCommand.PersistentFlags().BoolVarP(&tarArgs.UseGZip, "useGzip", "z", false, "If present the contents being packaged will be gzipped or unpackaged will be gunzipped")
+	tarCommand.PersistentFlags().StringVarP((*string)(&tarArgs.GzipCompressionLevel), "CompressionLevel", "q", string(gzip.DefaultCompression), "The compression level to use for gzip compression")
+	tarCommand.PersistentFlags().BoolVarP(&tarArgs.Unpackage, "unpackage", "u", false, "If present the input tar package will be unpacked at the outputPath")
+	tarCommand.PersistentFlags().BoolVarP(&tarArgs.UseEncryption, "encrypt", "e", false, "If present the tar will be encrypted while created, or decrypted while unpacked. Requires a passphrase or passphrase file be provided")
+	tarCommand.PersistentFlags().StringVarP(&tarArgs.Passphrase, "passphrase", "p", "", "The passphrase used to encrypt or decrypt the data")
+	tarCommand.PersistentFlags().StringVarP(&tarArgs.PassphraseFile, "passphraseFile", "f", "", "The file which will be read to get the passphrase used for encryption or decryption")
 	parentCmd.AddCommand(tarCommand)
-	util.HideGlobalFlags(tarCommand, []string{"input"})
+	util.HideGlobalFlags(tarCommand, map[string]util.FlagModifier{
+		"input": {
+			Hide:         false,
+			UsagePostFix: "(NOT USED FOR TAR PACKAGING, USE inputPath FLAG INSTEAD)",
+		},
+		"output": {
+			Hide:         false,
+			UsagePostFix: "(NOT USED FOR TAR UNPACKING, USE outputPath FLAG INSTEAD)",
+		},
+	})
 }
 
 func ValidateTarPackageArgs(logger *slog.Logger, tarArgs TarArgs, args []string) (tar.TarPackageParams, error) {
@@ -99,13 +109,7 @@ func ValidateTarPackageArgs(logger *slog.Logger, tarArgs TarArgs, args []string)
 }
 
 func tarPackageRun(cmd *cobra.Command, args []string) error {
-	// TODO: need validate args to check for if input path is specified for tar and not for untar (it would use -i)
 	commandLogger.Debug("running tar package")
-
-	// TODO: have an issue where we need an input path for the tar command...
-	// using the global input as currently designed will not work...
-	// we need a path to talk and tar each file for packing...
-	// Same likely true for output and unpacking...
 	params, err := ValidateTarPackageArgs(commandLogger, tarArgs, args)
 	if err != nil {
 		errMsg := "failed to validate tar packaging args"
@@ -157,18 +161,6 @@ func ValidateTarUnpackageArgs(logger *slog.Logger, tarArgs TarArgs, args []strin
 
 func tarUnpackageRun(cmd *cobra.Command, args []string) error {
 	commandLogger.Debug("running tar unpackage")
-	// if len(tarArgs.OutputPath) == 0 {
-	// 	commandLogger.Debug("output path flag not set, trying to set from remaining args")
-	// 	numArgs := len(args)
-	// 	if numArgs == 1 {
-	// 		tarArgs.OutputPath = args[0]
-	// 		commandLogger.Debug("pulling output path from remaining args")
-	// 	} else {
-	// 		errMsg := "number of arguments is not 1 so cannot pull output path from it"
-	// 		commandLogger.Error(errMsg, slog.Int("numArgs", numArgs))
-	// 		return errors.New(errMsg)
-	// 	}
-	// }
 	params, err := ValidateTarUnpackageArgs(commandLogger, tarArgs, args)
 	if err != nil {
 		errMsg := "un tar arg validation failed"

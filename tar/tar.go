@@ -130,7 +130,6 @@ func TarPackage(logger *slog.Logger, params TarPackageParams) error {
 				return returnErr
 			}
 
-			// TODO: Is this standard TAR here?
 			tarHeader.Name = strings.TrimPrefix(strings.Replace(path, ip, "", -1), string(filepath.Separator))
 
 			returnErr = tarWriter.WriteHeader(tarHeader)

@@ -14,8 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// TODO: add flag to save job to a file and also resume job from a file
-
 type BulkRenameArgs struct {
 	RootPath                  string `json:"rootPath"`
 	TargetRegexString         string `json:"targetRegexString"`

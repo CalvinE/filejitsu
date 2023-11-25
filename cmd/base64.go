@@ -175,6 +175,11 @@ func robustBase64Decode(commandLogger *slog.Logger, input io.Reader, output io.W
 			inputBuffer.UnreadByte()
 			continue
 		}
+		// if err := util.ProcessStreams(commandLogger, base64Decoder, output); err != nil {
+		// 	errMsg := "failed to process stream"
+		// 	commandLogger.Error(errMsg, slog.String("errorMessage", err.Error()))
+		// 	return fmt.Errorf("%s: %w", errMsg, err)
+		// }
 		bytesWritten, err := output.Write(data)
 		if err != nil {
 			errMsg := "failed to write decoded data to output"

@@ -100,7 +100,7 @@ func TestRoundTripTar(t *testing.T) {
 			}
 			tarCmd := SetupCommand("", "")
 			tarCmd.SetArgs(tc.GetTarArgs(testRootDir, tarPath))
-			if err = tarCmd.Execute(); err != nil {
+			if err := tarCmd.Execute(); err != nil {
 				t.Errorf("failed to run tar on dir: %v", err)
 				return
 			}
@@ -121,5 +121,17 @@ func TestRoundTripTar(t *testing.T) {
 				t.Errorf("failed in comparison of untar'ed files: %v", err)
 			}
 		})
+	}
+}
+
+func TestTarHelp(t *testing.T) {
+	tarCmd := SetupCommand("", "")
+	tarCmd.SetArgs([]string{
+		"tar",
+		"-h",
+	})
+	if err := tarCmd.Execute(); err != nil {
+		t.Errorf("failed to run tar on dir: %v", err)
+		return
 	}
 }
