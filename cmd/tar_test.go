@@ -10,20 +10,22 @@ import (
 
 func TestRoundTripTar(t *testing.T) {
 	type testCase struct {
-		Name         string
-		GetTarArgs   func(testRootDir, tarPath string) []string
-		GetUntarArgs func(tarPath, untarPath string) []string
+		Name                 string
+		AdditionalInputPaths []string
+		GetTarArgs           func(inputPaths []string, tarPath string) []string
+		GetUntarArgs         func(tarPath, untarPath string) []string
 	}
 	testCases := []testCase{
 		{
 			Name: "normal",
-			GetTarArgs: func(testRootDir, tarPath string) []string {
-				return []string{
+			GetTarArgs: func(inputPaths []string, tarPath string) []string {
+				args := []string{
 					"tar",
 					"-o",
 					tarPath,
-					testRootDir,
 				}
+				args = append(args, inputPaths...)
+				return args
 			},
 			GetUntarArgs: func(tarPath, untarPath string) []string {
 				return []string{
@@ -37,14 +39,15 @@ func TestRoundTripTar(t *testing.T) {
 		},
 		{
 			Name: "gzipped",
-			GetTarArgs: func(testRootDir, tarPath string) []string {
-				return []string{
+			GetTarArgs: func(inputPaths []string, tarPath string) []string {
+				args := []string{
 					"tar",
 					"-z",
 					"-o",
 					tarPath,
-					testRootDir,
 				}
+				args = append(args, inputPaths...)
+				return args
 			},
 			GetUntarArgs: func(tarPath, untarPath string) []string {
 				return []string{
@@ -59,16 +62,17 @@ func TestRoundTripTar(t *testing.T) {
 		},
 		{
 			Name: "encrypted",
-			GetTarArgs: func(testRootDir, tarPath string) []string {
-				return []string{
+			GetTarArgs: func(inputPaths []string, tarPath string) []string {
+				args := []string{
 					"tar",
 					"-e",
 					"-p",
 					"test1",
 					"-o",
 					tarPath,
-					testRootDir,
 				}
+				args = append(args, inputPaths...)
+				return args
 			},
 			GetUntarArgs: func(tarPath, untarPath string) []string {
 				return []string{
@@ -83,10 +87,39 @@ func TestRoundTripTar(t *testing.T) {
 				}
 			},
 		},
+		// {
+		// 	Name: "encrypted dir and single file",
+		// 	AdditionalInputPaths: []string{
+		// 		"/home/calvin/code/filejitsu/README.md",
+		// 	},
+		// 	GetTarArgs: func(inputPaths []string, tarPath string) []string {
+		// 		args := []string{
+		// 			"tar",
+		// 			"-e",
+		// 			"-p",
+		// 			"test1",
+		// 			"-o",
+		// 			tarPath,
+		// 		}
+		// 		args = append(args, inputPaths...)
+		// 		return args
+		// 	},
+		// 	GetUntarArgs: func(tarPath, untarPath string) []string {
+		// 		return []string{
+		// 			"tar",
+		// 			"-e",
+		// 			"-p",
+		// 			"test1",
+		// 			"-i",
+		// 			tarPath,
+		// 			"-u",
+		// 			untarPath,
+		// 		}
+		// 	},
+		// },
 	}
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-
 			testRootDir, content, cleanup, err := mock.MockDirTree("fjtest_files")
 			if err != nil {
 				t.Errorf("failed to create test dir tree: %v", err)
@@ -99,7 +132,11 @@ func TestRoundTripTar(t *testing.T) {
 				return
 			}
 			tarCmd := SetupCommand("", "")
-			tarCmd.SetArgs(tc.GetTarArgs(testRootDir, tarPath))
+			inputPaths := []string{testRootDir}
+			if len(tc.AdditionalInputPaths) > 0 {
+				inputPaths = append(inputPaths, tc.AdditionalInputPaths...)
+			}
+			tarCmd.SetArgs(tc.GetTarArgs(inputPaths, tarPath))
 			if err := tarCmd.Execute(); err != nil {
 				t.Errorf("failed to run tar on dir: %v", err)
 				return

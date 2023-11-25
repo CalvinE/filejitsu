@@ -118,11 +118,14 @@ func TarPackage(logger *slog.Logger, params TarPackageParams) error {
 				return err
 			}
 			fMode := info.Mode()
-			if !fMode.IsRegular() && !fMode.IsDir() {
+			isRegular := fMode.IsRegular()
+			isDir := fMode.IsDir()
+			name := info.Name()
+			if !isRegular && !isDir {
 				walkLogger.Debug("skipping entity because its not a regular file or directory")
 				return nil
 			}
-			tarHeader, returnErr := tar.FileInfoHeader(info, info.Name())
+			tarHeader, returnErr := tar.FileInfoHeader(info, name)
 			if returnErr != nil {
 				walkLogger.Error("failed to create tar header for file",
 					slog.String("errorMessage", err.Error()),
@@ -131,6 +134,15 @@ func TarPackage(logger *slog.Logger, params TarPackageParams) error {
 			}
 
 			tarHeader.Name = strings.TrimPrefix(strings.Replace(path, ip, "", -1), string(filepath.Separator))
+
+			if tarHeader.Name == "" {
+				if isRegular {
+					walkLogger.Debug("got input path that is a file and not a directory, changing the header name to compensate")
+					tarHeader.Name = filepath.Base(path)
+				} else {
+					return nil
+				}
+			}
 
 			returnErr = tarWriter.WriteHeader(tarHeader)
 			if returnErr != nil {

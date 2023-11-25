@@ -33,16 +33,14 @@ See global parameters for things like `input`, `output` or `logging` [here](../R
 
 ## Example Commands
 
-### Tar and encrypt the tar
+### Tar Compress and Encrypt a directory
 
 ```bash
-go run main.go tar -z -o output.tar.gz ./test_files/
-go run main.go encr -i output.tar.gz -p test -o output.tar.gz.enc
+./filejitsu tar -z -e -p test -o out.tar.gz.enc ./test_files
 ```
 
-### Decrypt the tar and unpack
+### Decrypt and Decompress the tar and unpack
 
 ```bash
-go run main.go dcry -i output.tar.gz.enc -o output.tar.gz.denc -p test
-go run main.go tar -u -z -i output.tar.gz.denc ./test2_files
+filejitsu tar -z -e -p test -u -i out.tar.gz.enc out_test 
 ```
