@@ -120,7 +120,7 @@ func TestRoundTripTar(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-			testRootDir, content, cleanup, err := mock.MockDirTree()
+			testRootDir, content, cleanup, err := mock.MakeGenericMockDirTree()
 			if err != nil {
 				t.Errorf("failed to create test dir tree: %v", err)
 			}

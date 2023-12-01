@@ -29,7 +29,7 @@ type MockFile struct {
 	Hash     string
 }
 
-func getMockDirContentData(rootDir string) (ContentMap, error) {
+func getMockDirContentMap(rootDir string) (ContentMap, error) {
 	content := []IncompleteMockFile{
 		{
 			FileName:     "file1.txt",
@@ -72,10 +72,10 @@ Sit quis reprehenderit Lorem incididunt veniam ut sit mollit proident pariatur l
 			RelativePath: filepath.Join("nested", "nexted2", "file.txt"),
 		},
 	}
-	return MakeMockDirContent(rootDir, content)
+	return MakeMockDirContentMap(rootDir, content)
 }
 
-func MakeMockDirContent(rootDir string, content []IncompleteMockFile) (ContentMap, error) {
+func MakeMockDirContentMap(rootDir string, content []IncompleteMockFile) (ContentMap, error) {
 	contentMap := make(ContentMap)
 	// get file content hashes
 	mockLogger := NewMockLogger()
@@ -96,13 +96,13 @@ func MakeMockDirContent(rootDir string, content []IncompleteMockFile) (ContentMa
 	return contentMap, nil
 }
 
-func MockDirTree() (string, ContentMap, CleanupFunction, error) {
+func MakeGenericMockDirTree() (string, ContentMap, CleanupFunction, error) {
 	rootDir := GetRandomDirName()
-	content, err := getMockDirContentData(rootDir)
+	content, err := getMockDirContentMap(rootDir)
 	if err != nil {
 		return "", nil, nil, err
 	}
-	return CustomMockDirTree(rootDir, content)
+	return CreateCustomMockDirTree(rootDir, content)
 }
 
 // GetRandomDirName returns a random path to a directory in your OSes temp directory. IT DOES NOT MAKE THE DIRECTORY
@@ -113,7 +113,7 @@ func GetRandomDirName() string {
 	return rootDir
 }
 
-func CustomMockDirTree(rootDir string, content ContentMap) (string, ContentMap, CleanupFunction, error) {
+func CreateCustomMockDirTree(rootDir string, content ContentMap) (string, ContentMap, CleanupFunction, error) {
 	for k, v := range content {
 		filePath := filepath.Dir(v.FullPath)
 		if err := os.MkdirAll(filePath, 0766); err != nil {
