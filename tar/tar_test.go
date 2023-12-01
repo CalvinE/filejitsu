@@ -62,7 +62,7 @@ func TestTarPackageRoundTrip(t *testing.T) {
 		t.Errorf("failed to open destination file: %v", err)
 		return
 	}
-	inputPath, _, cleanup, _ := mock.MockDirTree("test_files")
+	inputPath, _, cleanup, _ := mock.MockDirTree()
 	defer cleanup()
 	err = TarPackage(logger, TarPackageParams{
 		InputPaths: []string{inputPath},

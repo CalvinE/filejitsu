@@ -8,9 +8,18 @@ import (
 	"path/filepath"
 
 	"github.com/calvine/filejitsu/util"
+	"github.com/google/uuid"
 )
 
 type CleanupFunction func() error
+
+type IncompleteMockFile struct {
+	FileName     string
+	RelativePath string
+	Content      string
+}
+
+// type IncompleteContentMap map[string]IncompleteMockFile
 
 type ContentMap map[string]MockFile
 
@@ -20,17 +29,20 @@ type MockFile struct {
 	Hash     string
 }
 
-func getDirContentData(rootDir string) (map[string]MockFile, error) {
-	content := map[string]MockFile{
-		"file1.txt": {
-			Content:  "Magna nulla magna do qui irure.",
-			FullPath: filepath.Join(rootDir, "file1.txt"),
+func getMockDirContentData(rootDir string) (ContentMap, error) {
+	content := []IncompleteMockFile{
+		{
+			FileName:     "file1.txt",
+			Content:      "Magna nulla magna do qui irure.",
+			RelativePath: filepath.Join("file1.txt"),
 		},
-		"file2.txt": {
-			Content:  "Ea incididunt elit elit duis eiusmod quis pariatur. Tempor irure do velit eu voluptate nisi cupidatat sit consequat aliqua velit.",
-			FullPath: filepath.Join(rootDir, "file2.txt"),
+		{
+			FileName:     "file2.txt",
+			Content:      "Ea incididunt elit elit duis eiusmod quis pariatur. Tempor irure do velit eu voluptate nisi cupidatat sit consequat aliqua velit.",
+			RelativePath: filepath.Join("file2.txt"),
 		},
-		filepath.Join("nested", "bigfile.txt"): {
+		{
+			FileName: "bigfile.txt",
 			Content: `
 			Exercitation exercitation elit laborum proident consectetur aliquip incididunt amet nulla exercitation reprehenderit ullamco cupidatat. Exercitation aliqua esse velit ad. Laborum quis irure nisi commodo qui cillum nisi consequat voluptate. Consectetur laborum culpa proident deserunt nulla quis minim.
 
@@ -52,37 +64,56 @@ Lorem laboris enim sunt amet exercitation deserunt consequat incididunt est eu a
 
 Sit quis reprehenderit Lorem incididunt veniam ut sit mollit proident pariatur labore. Laboris culpa ullamco veniam qui officia. Qui adipisicing eiusmod sunt nostrud cillum mollit sit.
 			`,
-			FullPath: filepath.Join(rootDir, "nested", "bigfile.txt"),
+			RelativePath: filepath.Join("nested", "bigfile.txt"),
 		},
-		filepath.Join("nested", "nexted2", "file.txt"): {
-			Content:  "a double nested file",
-			FullPath: filepath.Join(rootDir, "nested", "nexted2", "file.txt"),
+		{
+			FileName:     "file.txt",
+			Content:      "a double nested file",
+			RelativePath: filepath.Join("nested", "nexted2", "file.txt"),
 		},
 	}
+	return MakeMockDirContent(rootDir, content)
+}
 
+func MakeMockDirContent(rootDir string, content []IncompleteMockFile) (ContentMap, error) {
+	contentMap := make(ContentMap)
 	// get file content hashes
 	mockLogger := NewMockLogger()
-	for k := range content {
-		f := content[k]
-		contentBuffer := bytes.NewBuffer([]byte(f.Content))
+	for _, k := range content {
+		contentBuffer := bytes.NewBuffer([]byte(k.Content))
 		hash, err := util.Sha512HashData(mockLogger, contentBuffer)
 		if err != nil {
 			return nil, fmt.Errorf("failed to hash file %s - %w", k, err)
 		}
-		f.Hash = hash
-		content[k] = f
+		mockFile := MockFile{
+			Content:  k.Content,
+			FullPath: filepath.Join(rootDir, k.RelativePath),
+			Hash:     hash,
+		}
+		contentMap[k.RelativePath] = mockFile
 	}
 
-	return content, nil
+	return contentMap, nil
 }
 
-func MockDirTree(dirName string) (string, map[string]MockFile, CleanupFunction, error) {
-	tmpDir := os.TempDir()
-	rootDir := filepath.Join(tmpDir, dirName)
-	content, err := getDirContentData(rootDir)
+func MockDirTree() (string, ContentMap, CleanupFunction, error) {
+	rootDir := GetRandomDirName()
+	content, err := getMockDirContentData(rootDir)
 	if err != nil {
 		return "", nil, nil, err
 	}
+	return CustomMockDirTree(rootDir, content)
+}
+
+// GetRandomDirName returns a random path to a directory in your OSes temp directory. IT DOES NOT MAKE THE DIRECTORY
+func GetRandomDirName() string {
+	tmpDir := os.TempDir()
+	dirName := uuid.New().String()
+	rootDir := filepath.Join(tmpDir, dirName)
+	return rootDir
+}
+
+func CustomMockDirTree(rootDir string, content ContentMap) (string, ContentMap, CleanupFunction, error) {
 	for k, v := range content {
 		filePath := filepath.Dir(v.FullPath)
 		if err := os.MkdirAll(filePath, 0766); err != nil {
@@ -112,7 +143,7 @@ func MockDirTree(dirName string) (string, map[string]MockFile, CleanupFunction, 
 }
 
 func ConfirmContentMapMatches(rootPath string, content ContentMap) error {
-	contentCopy := make(map[string]MockFile)
+	contentCopy := make(ContentMap)
 	for k, v := range content {
 		contentCopy[k] = v
 	}
