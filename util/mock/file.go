@@ -29,7 +29,7 @@ type MockFile struct {
 	Hash     string
 }
 
-func getMockDirContentMap(rootDir string) (ContentMap, error) {
+func getMockDirIncompleteMockFiles() ([]IncompleteMockFile, error) {
 	content := []IncompleteMockFile{
 		{
 			FileName:     "file1.txt",
@@ -72,9 +72,10 @@ Sit quis reprehenderit Lorem incididunt veniam ut sit mollit proident pariatur l
 			RelativePath: filepath.Join("nested", "nexted2", "file.txt"),
 		},
 	}
-	return MakeMockDirContentMap(rootDir, content)
+	return content, nil
 }
 
+// MakeMockDirContentMap
 func MakeMockDirContentMap(rootDir string, content []IncompleteMockFile) (ContentMap, error) {
 	contentMap := make(ContentMap)
 	// get file content hashes
@@ -96,23 +97,29 @@ func MakeMockDirContentMap(rootDir string, content []IncompleteMockFile) (Conten
 	return contentMap, nil
 }
 
+// MakeGenericMockDirTree is a helper function that creates a mock directory with a static content map. This means you do not need to create your own contentMap.
 func MakeGenericMockDirTree() (string, ContentMap, CleanupFunction, error) {
-	rootDir := GetRandomDirName()
-	content, err := getMockDirContentMap(rootDir)
+	incompleteContent, err := getMockDirIncompleteMockFiles()
+	if err != nil {
+		return "", nil, nil, err
+	}
+	rootDir := GetRandomTmpDirName()
+	content, err := MakeMockDirContentMap(rootDir, incompleteContent)
 	if err != nil {
 		return "", nil, nil, err
 	}
 	return CreateCustomMockDirTree(rootDir, content)
 }
 
-// GetRandomDirName returns a random path to a directory in your OSes temp directory. IT DOES NOT MAKE THE DIRECTORY
-func GetRandomDirName() string {
+// GetRandomTmpDirName returns a random path to a directory in your OSes temp directory. IT DOES NOT MAKE THE DIRECTORY
+func GetRandomTmpDirName() string {
 	tmpDir := os.TempDir()
 	dirName := uuid.New().String()
 	rootDir := filepath.Join(tmpDir, dirName)
 	return rootDir
 }
 
+// CreateCustomMockDirTree creates content in the contentMap in the provided rootDir. Returns the rootDir, contentMap, a clean up function that will delete all content in the root dir, and an error if any occurred. THIS CLEANUP FUNCTION DELETES THE rootDir, SO USE WITH CAUTION! PASS IN A TMP DIRECTORY MADE WITH GetRandomTmpDirName
 func CreateCustomMockDirTree(rootDir string, content ContentMap) (string, ContentMap, CleanupFunction, error) {
 	for k, v := range content {
 		filePath := filepath.Dir(v.FullPath)
@@ -142,6 +149,7 @@ func CreateCustomMockDirTree(rootDir string, content ContentMap) (string, Conten
 	return rootDir, content, cleanup, nil
 }
 
+// ConfirmContentMapMatches walks the root path and confirms that the content in the contentMap is present and has the same value. Will raise error if content exists that is not in the contentMap also.
 func ConfirmContentMapMatches(rootPath string, content ContentMap) error {
 	contentCopy := make(ContentMap)
 	for k, v := range content {
@@ -166,7 +174,7 @@ func ConfirmContentMapMatches(rootPath string, content ContentMap) error {
 		relativePath, _ := filepath.Rel(rootPath, path)
 		c, ok := contentCopy[relativePath]
 		if !ok {
-			return fmt.Errorf("file in untar path is not in mock content: %s", fullPath)
+			return fmt.Errorf("file in root path is not in mock content: %s", fullPath)
 		}
 
 		f, err := os.Open(fullPath)
