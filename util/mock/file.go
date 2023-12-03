@@ -75,7 +75,7 @@ Sit quis reprehenderit Lorem incididunt veniam ut sit mollit proident pariatur l
 	return content, nil
 }
 
-// MakeMockDirContentMap
+// MakeMockDirContentMap takes a root directory and an IncompleteMockFile array and returns a ContentMap, but does not create the content in the ContentMap
 func MakeMockDirContentMap(rootDir string, content []IncompleteMockFile) (ContentMap, error) {
 	contentMap := make(ContentMap)
 	// get file content hashes
